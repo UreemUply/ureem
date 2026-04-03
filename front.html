@@ -446,7 +446,7 @@
         managerName: "manager_name",
         teamLeaderName: "team_leader_name",
         positionName: "position_name",
-        publicPhone: "public_phone"
+        Phone: "phone"
       },
       account: {
         employeeNo: "employee_no",
@@ -562,7 +562,57 @@
       const managerName = row[c.managerName] ?? "-";
       const teamLeaderName = row[c.teamLeaderName] ?? "-";
       const positionName = row[c.positionName] ?? "-";
-      const publicPhone = row[c.publicPhone] ?? "-";
+
+      const rawPhone =
+        row[c.publicPhone] ??
+        row[c.phone] ??
+        "-";
+
+      const phoneText = String(rawPhone || "-").trim();
+  const phoneHref = phoneText.replace(/[^0-9+]/g, "");
+
+  const phoneCell = phoneHref && phoneHref !== "-"
+    ? `
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span>${escapeHtml(phoneText)}</span>
+        <a
+          href="tel:${escapeHtml(phoneHref)}"
+          onclick="event.stopPropagation();"
+          style="
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            height:30px;
+            padding:0 10px;
+            border-radius:999px;
+            background:#e6007e;
+            color:#fff;
+            text-decoration:none;
+            font-size:12px;
+            font-weight:700;
+            white-space:nowrap;
+          "
+        >통화</a>
+      </div>
+    `
+    : `<span>-</span>`;
+
+  const trClass = currentRole === "admin" ? "admin-row" : "";
+  const trClick = currentRole === "admin"
+    ? `onclick="goEdit('${String(employeeNo).replaceAll("'", "\\'")}')"`
+    : "";
+
+  return `
+    <tr class="${trClass}" ${trClick}>
+      <td>${escapeHtml(managerName)}</td>
+      <td>${escapeHtml(teamLeaderName)}</td>
+      <td>${escapeHtml(storeName)}</td>
+      <td class="cell-name">${escapeHtml(employeeName)}</td>
+      <td>${escapeHtml(positionName)}</td>
+      <td class="cell-muted">${phoneCell}</td>
+    </tr>
+  `;
+}
 
       const trClass = currentRole === "admin" ? "admin-row" : "";
       const trClick = currentRole === "admin"
@@ -576,7 +626,7 @@
           <td>${escapeHtml(storeName)}</td>
           <td class="cell-name">${escapeHtml(employeeName)}</td>
           <td>${escapeHtml(positionName)}</td>
-          <td class="cell-muted">${escapeHtml(publicPhone)}</td>
+          <td class="cell-muted">${escapeHtml(Phone)}</td>
         </tr>
       `;
     }
