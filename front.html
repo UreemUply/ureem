@@ -553,22 +553,22 @@
       location.href = `edit.html?employee_no=${encodeURIComponent(employeeNo)}`;
     }
 
-    function buildTableRow(row) {
-      const c = COLUMN_MAP.directory;
+function buildTableRow(row) {
+  const c = COLUMN_MAP.directory;
 
-      const employeeNo = row[c.employeeNo] ?? "";
-      const employeeName = row[c.employeeName] ?? "-";
-      const storeName = row[c.storeName] ?? "-";
-      const managerName = row[c.managerName] ?? "-";
-      const teamLeaderName = row[c.teamLeaderName] ?? "-";
-      const positionName = row[c.positionName] ?? "-";
+  const employeeNo = row[c.employeeNo] ?? "";
+  const employeeName = row[c.employeeName] ?? "-";
+  const storeName = row[c.storeName] ?? "-";
+  const managerName = row[c.managerName] ?? "-";
+  const teamLeaderName = row[c.teamLeaderName] ?? "-";
+  const positionName = row[c.positionName] ?? "-";
 
-      const rawPhone =
-        row[c.publicPhone] ??
-        row[c.phone] ??
-        "-";
+  const rawPhone =
+    row[c.publicPhone] ??
+    row[c.phone] ??
+    "-";
 
-      const phoneText = String(rawPhone || "-").trim();
+  const phoneText = String(rawPhone || "-").trim();
   const phoneHref = phoneText.replace(/[^0-9+]/g, "");
 
   const phoneCell = phoneHref && phoneHref !== "-"
