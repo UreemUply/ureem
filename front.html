@@ -260,6 +260,28 @@
       color: #6b7280;
     }
 
+    .phone-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .call-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: #e6007e;
+      color: #fff;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
     .empty,
     .loading,
     .error-box {
@@ -324,12 +346,12 @@
         <p id="welcomeText">사용자 정보를 확인 중...</p>
       </div>
 
-    <div class="top-actions">
-      <button type="button" class="btn-admin" id="approveBtn">가입승인</button>
-      <button type="button" class="btn-admin" id="storeEditBtn">매장편집</button>
-      <button type="button" class="btn-secondary" id="refreshBtn">새로고침</button>
-      <button type="button" class="btn-primary" id="logoutBtn">로그아웃</button>
-</div>
+      <div class="top-actions">
+        <button type="button" class="btn-admin" id="approveBtn">가입승인</button>
+        <button type="button" class="btn-admin" id="storeEditBtn">매장편집</button>
+        <button type="button" class="btn-secondary" id="refreshBtn">새로고침</button>
+        <button type="button" class="btn-primary" id="logoutBtn">로그아웃</button>
+      </div>
     </div>
 
     <div class="panel">
@@ -446,7 +468,8 @@
         managerName: "manager_name",
         teamLeaderName: "team_leader_name",
         positionName: "position_name",
-        Phone: "phone"
+        publicPhone: "public_phone",
+        phone: "phone"
       },
       account: {
         employeeNo: "employee_no",
@@ -466,7 +489,6 @@
 
     const approveBtn = document.getElementById("approveBtn");
     const storeEditBtn = document.getElementById("storeEditBtn");
-    
     const welcomeText = document.getElementById("welcomeText");
     const refreshBtn = document.getElementById("refreshBtn");
     const logoutBtn = document.getElementById("logoutBtn");
@@ -553,66 +575,41 @@
       location.href = `edit.html?employee_no=${encodeURIComponent(employeeNo)}`;
     }
 
-function buildTableRow(row) {
-  const c = COLUMN_MAP.directory;
+    function buildPhoneCell(phoneValue) {
+      const phoneText = String(phoneValue ?? "").trim();
 
-  const employeeNo = row[c.employeeNo] ?? "";
-  const employeeName = row[c.employeeName] ?? "-";
-  const storeName = row[c.storeName] ?? "-";
-  const managerName = row[c.managerName] ?? "-";
-  const teamLeaderName = row[c.teamLeaderName] ?? "-";
-  const positionName = row[c.positionName] ?? "-";
+      if (!phoneText) {
+        return '<span>-</span>';
+      }
 
-  const rawPhone =
-    row[c.publicPhone] ??
-    row[c.phone] ??
-    "-";
+      const phoneHref = phoneText.replace(/[^0-9+]/g, '');
 
-  const phoneText = String(rawPhone || "-").trim();
-  const phoneHref = phoneText.replace(/[^0-9+]/g, "");
+      if (!phoneHref) {
+        return `<span>${escapeHtml(phoneText)}</span>`;
+      }
 
-  const phoneCell = phoneHref && phoneHref !== "-"
-    ? `
-      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-        <span>${escapeHtml(phoneText)}</span>
-        <a
-          href="tel:${escapeHtml(phoneHref)}"
-          onclick="event.stopPropagation();"
-          style="
-            display:inline-flex;
-            align-items:center;
-            justify-content:center;
-            height:30px;
-            padding:0 10px;
-            border-radius:999px;
-            background:#e6007e;
-            color:#fff;
-            text-decoration:none;
-            font-size:12px;
-            font-weight:700;
-            white-space:nowrap;
-          "
-        >통화</a>
-      </div>
-    `
-    : `<span>-</span>`;
+      return `
+        <div class="phone-wrap">
+          <span>${escapeHtml(phoneText)}</span>
+          <a
+            href="tel:${escapeHtml(phoneHref)}"
+            class="call-btn"
+            onclick="event.stopPropagation();"
+          >통화</a>
+        </div>
+      `;
+    }
 
-  const trClass = currentRole === "admin" ? "admin-row" : "";
-  const trClick = currentRole === "admin"
-    ? `onclick="goEdit('${String(employeeNo).replaceAll("'", "\\'")}')"`
-    : "";
+    function buildTableRow(row) {
+      const c = COLUMN_MAP.directory;
 
-  return `
-    <tr class="${trClass}" ${trClick}>
-      <td>${escapeHtml(managerName)}</td>
-      <td>${escapeHtml(teamLeaderName)}</td>
-      <td>${escapeHtml(storeName)}</td>
-      <td class="cell-name">${escapeHtml(employeeName)}</td>
-      <td>${escapeHtml(positionName)}</td>
-      <td class="cell-muted">${phoneCell}</td>
-    </tr>
-  `;
-}
+      const employeeNo = row[c.employeeNo] ?? "";
+      const employeeName = row[c.employeeName] ?? "-";
+      const storeName = row[c.storeName] ?? "-";
+      const managerName = row[c.managerName] ?? "-";
+      const teamLeaderName = row[c.teamLeaderName] ?? "-";
+      const positionName = row[c.positionName] ?? "-";
+      const phoneValue = row[c.publicPhone] ?? row[c.phone] ?? "";
 
       const trClass = currentRole === "admin" ? "admin-row" : "";
       const trClick = currentRole === "admin"
@@ -626,7 +623,7 @@ function buildTableRow(row) {
           <td>${escapeHtml(storeName)}</td>
           <td class="cell-name">${escapeHtml(employeeName)}</td>
           <td>${escapeHtml(positionName)}</td>
-          <td class="cell-muted">${escapeHtml(Phone)}</td>
+          <td class="cell-muted">${buildPhoneCell(phoneValue)}</td>
         </tr>
       `;
     }
@@ -832,7 +829,7 @@ function buildTableRow(row) {
           ${c.managerName},
           ${c.teamLeaderName},
           ${c.positionName},
-          ${c.Phone}
+          ${c.publicPhone}
         `)
         .order(c.employeeName, { ascending: true });
 
@@ -846,14 +843,15 @@ function buildTableRow(row) {
       filteredRows = [...allRows];
       renderList(filteredRows);
     }
-approveBtn.addEventListener("click", () => {
-  location.href = "auth-requests.html";
-});
 
-storeEditBtn.addEventListener("click", () => {
-  location.href = "store-edit.html"; // 페이지 따로 만들면 됨
-});
-    
+    approveBtn.addEventListener("click", () => {
+      location.href = "auth-requests.html";
+    });
+
+    storeEditBtn.addEventListener("click", () => {
+      location.href = "store-edit.html";
+    });
+
     searchBtn.addEventListener("click", applyFilters);
     resetBtn.addEventListener("click", resetFilters);
 
@@ -899,11 +897,6 @@ storeEditBtn.addEventListener("click", () => {
       }
     });
 
-if (currentRole === "admin") {
-  approveBtn.style.display = "inline-flex";
-  storeEditBtn.style.display = "inline-flex";
-}
-    
     async function init() {
       try {
         statusText.textContent = "로그인 상태 확인 중...";
@@ -919,6 +912,11 @@ if (currentRole === "admin") {
 
         welcomeText.textContent = `${myAccount.employee_no} 로그인됨`;
         roleText.textContent = `권한: ${currentRole}`;
+
+        if (currentRole === "admin") {
+          approveBtn.style.display = "inline-flex";
+          storeEditBtn.style.display = "inline-flex";
+        }
 
         renderList(filteredRows);
       } catch (err) {
