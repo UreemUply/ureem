@@ -3,12 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>조직도</title>
+<title>사내 조직도</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-body{font-family:sans-serif;background:#f5f7fb;margin:0}
+body{margin:0;font-family:sans-serif;background:#f5f7fb}
 .wrap{max-width:1200px;margin:auto;padding:20px}
 .panel{background:#fff;border-radius:12px;padding:15px;margin-bottom:10px}
+.topbar{display:flex;justify-content:space-between;margin-bottom:15px}
+
+button{border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+.btn-primary{background:#111;color:#fff}
+.btn-admin{background:#e6007e;color:#fff;display:none}
+
+.filter-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+input,select{height:40px;border:1px solid #ddd;border-radius:8px;padding:0 10px}
+
+.summary{display:flex;justify-content:space-between}
 
 .position-row{display:grid;gap:10px;margin-bottom:10px}
 .position-row:first-child{grid-template-columns:repeat(6,1fr)}
@@ -27,12 +38,30 @@ td{padding:10px;border-bottom:1px solid #eee}
 <body>
 <div class="wrap">
 
-<div class="panel">
-<button onclick="logout()">로그아웃</button>
+<div class="topbar">
+<div>
+<h2>사내 조직도</h2>
+<p id="welcome"></p>
 </div>
 
-<div class="panel">
+<div>
+<button id="adminBtn" class="btn-admin">관리자</button>
+<button onclick="location.reload()">새로고침</button>
+<button class="btn-primary" onclick="logout()">로그아웃</button>
+</div>
+</div>
+
+<div class="panel filter-grid">
+<input id="search" placeholder="이름/사번">
+<select id="store"><option value="">매장</option></select>
+<select id="manager"><option value="">담당</option></select>
+<select id="team"><option value="">팀장</option></select>
+<select id="position"><option value="">직급</option></select>
+</div>
+
+<div class="panel summary">
 <span id="count">0명</span>
+<span id="role"></span>
 </div>
 
 <div class="panel">
@@ -44,7 +73,6 @@ td{padding:10px;border-bottom:1px solid #eee}
 <div class="position-item"><span>SP1.5</span><span>-</span></div>
 <div class="position-item"><span>SP1</span><span>-</span></div>
 </div>
-
 <div class="position-row">
 <div class="position-item"><span>책임</span><span>-</span></div>
 <div class="position-item"><span>선임</span><span>-</span></div>
@@ -77,33 +105,74 @@ const supabase = window.supabase.createClient(
 'sb_publishable_4oBm89ecivuVF6StOBz7yg_qNBItC4z'
 );
 
+let allRows = [];
+
 async function init(){
 
-// 1. 로그인 체크
+// 로그인 확인
 const { data:{ user } } = await supabase.auth.getUser();
+if(!user){ location.href="index.html"; return; }
 
-if(!user){
-location.href="index.html";
-return;
+// 내 계정 조회
+const { data:account } = await supabase
+.from("au_employee_accounts")
+.select("*")
+.eq("auth_user_id", user.id)
+.single();
+
+if(!account.signup_approved) return alert("미승인 계정");
+if(account.account_status !== "active") return alert("계정 비활성");
+
+// 권한 확인
+const { data:emp } = await supabase
+.from("au_employees")
+.select("system_role_id")
+.eq("employee_no", account.employee_no)
+.single();
+
+const { data:role } = await supabase
+.from("au_system_roles")
+.select("role_name")
+.eq("id", emp.system_role_id)
+.single();
+
+document.getElementById("role").innerText = role.role_name;
+if(role.role_name==="admin"){
+document.getElementById("adminBtn").style.display="inline-block";
 }
 
-// 2. DB 조회
-const { data, error } = await supabase
+// 데이터 조회
+const { data } = await supabase
 .from("au_employee_directory_view")
 .select("*");
 
-if(error){
-console.error(error);
-alert(error.message);
-return;
+allRows = data || [];
+
+setFilters();
+render(allRows);
 }
 
-render(data);
+function setFilters(){
+const get=(k)=>[...new Set(allRows.map(r=>r[k]).filter(v=>v))];
+
+fill("store","store_name");
+fill("manager","manager_name");
+fill("team","team_leader_name");
+fill("position","position_name");
+
+function fill(id,key){
+const el=document.getElementById(id);
+get(key).forEach(v=>{
+const o=document.createElement("option");
+o.value=v;o.textContent=v;
+el.appendChild(o);
+});
+}
 }
 
 function render(rows){
 
-document.getElementById("count").innerText = `총 ${rows.length}명`;
+document.getElementById("count").innerText=`총 ${rows.length}명`;
 
 document.getElementById("tbody").innerHTML =
 rows.map(r=>`
@@ -118,18 +187,35 @@ rows.map(r=>`
 `).join("");
 
 // 직급 집계
-const counts = {};
+const c={};
 rows.forEach(r=>{
-if(!r.position_name) return;
-counts[r.position_name] = (counts[r.position_name]||0)+1;
+if(!r.position_name)return;
+c[r.position_name]=(c[r.position_name]||0)+1;
 });
 
 document.querySelectorAll(".position-item").forEach(el=>{
-const label = el.children[0].innerText;
-const v = counts[label] || 0;
-el.children[1].innerText = v ? v : "-";
+const key=el.children[0].innerText;
+const v=c[key]||0;
+el.children[1].innerText=v? v : "-";
 });
 }
+
+// 필터
+document.querySelectorAll("input,select").forEach(el=>{
+el.addEventListener("input",()=>{
+const keyword=document.getElementById("search").value.toLowerCase();
+
+const rows = allRows.filter(r=>{
+return (!keyword || r.name.includes(keyword) || r.employee_no.includes(keyword))
+&& (!store.value || r.store_name===store.value)
+&& (!manager.value || r.manager_name===manager.value)
+&& (!team.value || r.team_leader_name===team.value)
+&& (!position.value || r.position_name===position.value);
+});
+
+render(rows);
+});
+});
 
 async function logout(){
 await supabase.auth.signOut();
