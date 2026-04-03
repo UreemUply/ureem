@@ -324,11 +324,12 @@
         <p id="welcomeText">사용자 정보를 확인 중...</p>
       </div>
 
-      <div class="top-actions">
-        <button type="button" class="btn-admin" id="adminBtn">관리자 페이지 이동</button>
-        <button type="button" class="btn-secondary" id="refreshBtn">새로고침</button>
-        <button type="button" class="btn-primary" id="logoutBtn">로그아웃</button>
-      </div>
+    <div class="top-actions">
+      <button type="button" class="btn-admin" id="approveBtn">가입승인</button>
+      <button type="button" class="btn-admin" id="storeEditBtn">매장편집</button>
+      <button type="button" class="btn-secondary" id="refreshBtn">새로고침</button>
+      <button type="button" class="btn-primary" id="logoutBtn">로그아웃</button>
+</div>
     </div>
 
     <div class="panel">
@@ -463,8 +464,10 @@
       }
     };
 
+    const approveBtn = document.getElementById("approveBtn");
+    const storeEditBtn = document.getElementById("storeEditBtn");
+    
     const welcomeText = document.getElementById("welcomeText");
-    const adminBtn = document.getElementById("adminBtn");
     const refreshBtn = document.getElementById("refreshBtn");
     const logoutBtn = document.getElementById("logoutBtn");
 
@@ -793,7 +796,14 @@
       filteredRows = [...allRows];
       renderList(filteredRows);
     }
+approveBtn.addEventListener("click", () => {
+  location.href = "auth-requests.html";
+});
 
+storeEditBtn.addEventListener("click", () => {
+  location.href = "store-edit.html"; // 페이지 따로 만들면 됨
+});
+    
     searchBtn.addEventListener("click", applyFilters);
     resetBtn.addEventListener("click", resetFilters);
 
@@ -805,10 +815,6 @@
         console.error(err);
         showError(err.message || "새로고침 중 오류가 발생했어.");
       }
-    });
-
-    adminBtn.addEventListener("click", () => {
-      location.href = "auth-requests.html";
     });
 
     logoutBtn.addEventListener("click", async () => {
@@ -843,6 +849,11 @@
       }
     });
 
+    if (myRole === "admin") {
+  approveBtn.style.display = "inline-flex";
+  storeEditBtn.style.display = "inline-flex";
+}
+    
     async function init() {
       try {
         statusText.textContent = "로그인 상태 확인 중...";
@@ -858,7 +869,6 @@
 
         welcomeText.textContent = `${myAccount.employee_no} 로그인됨`;
         roleText.textContent = `권한: ${currentRole}`;
-        adminBtn.style.display = currentRole === "admin" ? "inline-flex" : "none";
 
         renderList(filteredRows);
       } catch (err) {
