@@ -366,6 +366,16 @@
       }
     });
 
+    const { data, error } = await supabaseClient.auth.signUp({
+  email: form.email,
+  password: form.password
+});
+
+console.log('signUp data:', data);
+console.log('signUp error:', error);
+console.log('user:', data?.user);
+console.log('session:', data?.session);
+    
     (async function init() {
       try {
         await loadSelectOptions();
