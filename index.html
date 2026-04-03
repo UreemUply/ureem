@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>유림텔레콤 조직도 시스템</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+      color: #111827;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-wrap {
+      width: 100%;
+      max-width: 460px;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 18px;
+      padding: 32px 28px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+    }
+    .title {
+      margin: 0 0 26px;
+      font-size: 28px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .field {
+      margin-bottom: 14px;
+    }
+    .label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .input {
+      width: 100%;
+      border: 1px solid #d8deea;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+      background: #fff;
+    }
+    .input:focus {
+      outline: none;
+      border-color: #6b8cff;
+      box-shadow: 0 0 0 3px rgba(107,140,255,0.15);
+    }
+    .btn {
+      width: 100%;
+      border: 0;
+      border-radius: 10px;
+      padding: 13px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-login {
+      margin-top: 8px;
+      background: #111827;
+      color: #fff;
+    }
+    .btn-login:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .signup-link {
+      margin-top: 14px;
+      text-align: center;
+    }
+    .signup-link a {
+      font-size: 14px;
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .signup-link a:hover {
+      text-decoration: underline;
+    }
+    .msg {
+      margin-top: 16px;
+      padding: 13px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+      display: none;
+    }
+    .msg.success {
+      display: block;
+      background: #ecfdf3;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+    .msg.error {
+      display: block;
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <h1 class="title">유림텔레콤 조직도 시스템</h1>
+
+      <form id="loginForm">
+        <div class="field">
+          <label class="label" for="employee_no">사번</label>
+          <input class="input" type="text" id="employee_no" name="employee_no" required />
+        </div>
+
+        <div class="field">
+          <label class="label" for="password">비밀번호</label>
+          <input class="input" type="password" id="password" name="password" required />
+        </div>
+
+        <button type="submit" class="btn btn-login" id="loginBtn">로그인</button>
+      </form>
+
+      <div class="signup-link">
+        <a href="signup.html">회원가입</a>
+      </div>
+
+      <div id="messageBox" class="msg"></div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://ytnxmnbctujuopbqpurl.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_4oBm89ecivuVF6StOBz7yg_qNBItC4z';
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const messageBox = document.getElementById('messageBox');
+
+    function showMessage(type, text) {
+      messageBox.className = `msg ${type}`;
+      messageBox.textContent = text;
+      messageBox.style.display = type ? 'block' : 'none';
+    }
+
+    async function getLoginEmailByEmployeeNo(employeeNo) {
+      const { data, error } = await supabaseClient
+        .from('au_employee_accounts')
+        .select('login_email')
+        .eq('employee_no', employeeNo)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(`로그인 정보 조회 실패: ${error.message}`);
+      }
+
+      if (!data?.login_email) {
+        throw new Error('해당 사번의 로그인 계정을 찾을 수 없어.');
+      }
+
+      return data.login_email;
+    }
+
+    async function signInWithEmployeeNo(employeeNo, password) {
+      const loginEmail = await getLoginEmailByEmployeeNo(employeeNo);
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: loginEmail,
+        password
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data;
+    }
+
+    async function getAccessState() {
+      const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+
+      if (userError) {
+        throw new Error(userError.message);
+      }
+
+      const user = userData?.user;
+
+      if (!user) {
+        return { state: 'not_logged_in' };
+      }
+
+      const { data: account, error: accountError } = await supabaseClient
+        .from('au_employee_accounts')
+        .select(`
+          employee_no,
+          signup_approved,
+          account_status,
+          au_employees (
+            is_active,
+            employment_status
+          )
+        `)
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (accountError) {
+        throw new Error(accountError.message);
+      }
+
+      if (!account) {
+        const { data: requestData, error: requestError } = await supabaseClient
+          .from('au_signup_requests')
+          .select('request_status, reject_reason')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+
+        if (requestError) {
+          throw new Error(requestError.message);
+        }
+
+        if (!requestData) {
+          return { state: 'no_request' };
+        }
+
+        if (requestData.request_status === 'pending') {
+          return { state: 'pending' };
+        }
+
+        if (requestData.request_status === 'rejected') {
+          return {
+            state: 'rejected',
+            reject_reason: requestData.reject_reason || ''
+          };
+        }
+
+        return { state: 'unknown' };
+      }
+
+      if (!account.signup_approved) {
+        return { state: 'pending' };
+      }
+
+      if (account.account_status === 'locked') {
+        return { state: 'locked' };
+      }
+
+      if (account.account_status === 'disabled') {
+        return { state: 'disabled' };
+      }
+
+      const employee = Array.isArray(account.au_employees)
+        ? account.au_employees[0]
+        : account.au_employees;
+
+      if (!employee?.is_active) {
+        return { state: 'disabled' };
+      }
+
+      if (employee?.employment_status === '퇴사') {
+        return { state: 'retired' };
+      }
+
+      return {
+        state: 'active',
+        employee_no: account.employee_no
+      };
+    }
+
+    async function redirectByState() {
+      const result = await getAccessState();
+
+      if (result.state === 'active') {
+        window.location.href = 'front.html';
+        return;
+      }
+
+      if (result.state === 'pending') {
+        showMessage('error', '관리자 승인 대기 상태야.');
+        await supabaseClient.auth.signOut();
+        return;
+      }
+
+      if (result.state === 'rejected') {
+        showMessage('error', `가입 신청이 반려됐어. ${result.reject_reason || ''}`);
+        await supabaseClient.auth.signOut();
+        return;
+      }
+
+      if (result.state === 'locked') {
+        showMessage('error', '계정이 잠겨 있어.');
+        await supabaseClient.auth.signOut();
+        return;
+      }
+
+      if (result.state === 'disabled') {
+        showMessage('error', '비활성화된 계정이야.');
+        await supabaseClient.auth.signOut();
+        return;
+      }
+
+      if (result.state === 'retired') {
+        showMessage('error', '퇴사 처리된 계정이야.');
+        await supabaseClient.auth.signOut();
+        return;
+      }
+
+      showMessage('error', '접근 가능한 계정 정보를 찾을 수 없어.');
+      await supabaseClient.auth.signOut();
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showMessage('', '');
+
+      const formData = Object.fromEntries(new FormData(loginForm).entries());
+      const employeeNo = String(formData.employee_no || '').trim();
+      const password = String(formData.password || '');
+
+      if (!employeeNo || !password) {
+        showMessage('error', '사번과 비밀번호를 입력해.');
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = '로그인 중...';
+
+      try {
+        await signInWithEmployeeNo(employeeNo, password);
+        await redirectByState();
+      } catch (error) {
+        console.error('login error:', error);
+        showMessage('error', error.message || '로그인 중 오류가 발생했어.');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = '로그인';
+      }
+    });
+  </script>
+</body>
+</html>
