@@ -1,251 +1,143 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>사내 조직도</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>조직도</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:sans-serif;background:#f5f7fb;margin:0}
+.wrap{max-width:1200px;margin:auto;padding:20px}
+.panel{background:#fff;border-radius:12px;padding:15px;margin-bottom:10px}
 
-  <style>
-    * { box-sizing: border-box; }
+.position-row{display:grid;gap:10px;margin-bottom:10px}
+.position-row:first-child{grid-template-columns:repeat(6,1fr)}
+.position-row:last-child{grid-template-columns:repeat(4,1fr)}
 
-    body {
-      margin: 0;
-      font-family: Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-      background: #f5f7fb;
-      color: #111;
-    }
+.position-item{background:#f1f5f9;padding:10px;border-radius:8px;display:flex;justify-content:space-between;font-weight:700}
 
-    .wrap {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 24px 16px 40px;
-    }
+table{width:100%;border-collapse:collapse}
+th{background:#111;color:#fff;padding:10px}
+td{padding:10px;border-bottom:1px solid #eee}
 
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-    }
-
-    .title-area h1 {
-      margin: 0;
-      font-size: 26px;
-      font-weight: 800;
-    }
-
-    button {
-      border: 0;
-      cursor: pointer;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-weight: 700;
-    }
-
-    .btn-primary { background:#111827; color:#fff; }
-    .btn-secondary { background:#e5e7eb; }
-    .btn-admin { background:#e6007e; color:#fff; display:none; }
-
-    .panel {
-      background:#fff;
-      border-radius:16px;
-      padding:16px;
-      margin-bottom:14px;
-    }
-
-    .filter-grid {
-      display:grid;
-      grid-template-columns: repeat(5,1fr);
-      gap:10px;
-    }
-
-    .field input, .field select {
-      width:100%;
-      height:40px;
-      border:1px solid #ddd;
-      border-radius:10px;
-      padding:0 10px;
-    }
-
-    .summary {
-      display:flex;
-      justify-content:space-between;
-    }
-
-    /* 직급 요약 */
-    .position-row {
-      display:grid;
-      gap:10px;
-      margin-bottom:10px;
-    }
-
-    .position-row:first-child {
-      grid-template-columns: repeat(6,1fr);
-    }
-
-    .position-row:last-child {
-      grid-template-columns: repeat(4,1fr);
-    }
-
-    .position-item {
-      background:#f8fafc;
-      border-radius:10px;
-      padding:10px;
-      display:flex;
-      justify-content:space-between;
-      font-weight:700;
-    }
-
-    /* 테이블 */
-    .table-wrap {
-      background:#fff;
-      border-radius:16px;
-      overflow:auto;
-    }
-
-    table {
-      width:100%;
-      border-collapse:collapse;
-    }
-
-    th {
-      background:#111827;
-      color:#fff;
-      padding:12px;
-      text-align:left;
-    }
-
-    td {
-      padding:12px;
-      border-bottom:1px solid #eee;
-    }
-
-    tr:hover {
-      background:#f9fafb;
-    }
-
-    .hidden { display:none; }
-  </style>
+.hidden{display:none}
+</style>
 </head>
 
 <body>
 <div class="wrap">
 
-  <div class="topbar">
-    <div class="title-area">
-      <h1>사내 조직도</h1>
-      <p id="welcomeText"></p>
-    </div>
+<div class="panel">
+<button onclick="logout()">로그아웃</button>
+</div>
 
-    <div>
-      <button class="btn-admin" id="adminBtn">관리자</button>
-      <button class="btn-secondary" id="refreshBtn">새로고침</button>
-      <button class="btn-primary" id="logoutBtn">로그아웃</button>
-    </div>
-  </div>
+<div class="panel">
+<span id="count">0명</span>
+</div>
 
-  <div class="panel filter-grid">
-    <input id="searchInput" placeholder="이름/사번"/>
-    <select id="storeFilter"><option value="">매장</option></select>
-    <select id="managerFilter"><option value="">담당</option></select>
-    <select id="teamLeaderFilter"><option value="">팀장</option></select>
-    <select id="positionFilter"><option value="">직급</option></select>
-  </div>
+<div class="panel">
+<div class="position-row">
+<div class="position-item"><span>담당</span><span>-</span></div>
+<div class="position-item"><span>팀장</span><span>-</span></div>
+<div class="position-item"><span>점장</span><span>-</span></div>
+<div class="position-item"><span>SP2</span><span>-</span></div>
+<div class="position-item"><span>SP1.5</span><span>-</span></div>
+<div class="position-item"><span>SP1</span><span>-</span></div>
+</div>
 
-  <div class="panel summary">
-    <span id="countBadge">0명</span>
-    <span id="roleText"></span>
-  </div>
+<div class="position-row">
+<div class="position-item"><span>책임</span><span>-</span></div>
+<div class="position-item"><span>선임</span><span>-</span></div>
+<div class="position-item"><span>사원</span><span>-</span></div>
+<div class="position-item"><span>CSM</span><span>-</span></div>
+</div>
+</div>
 
-  <!-- 직급 요약 -->
-  <div class="panel">
-    <div class="position-row">
-      <div class="position-item"><span>담당</span><span>-</span></div>
-      <div class="position-item"><span>팀장</span><span>-</span></div>
-      <div class="position-item"><span>점장</span><span>-</span></div>
-      <div class="position-item"><span>SP2</span><span>-</span></div>
-      <div class="position-item"><span>SP1.5</span><span>-</span></div>
-      <div class="position-item"><span>SP1</span><span>-</span></div>
-    </div>
-    <div class="position-row">
-      <div class="position-item"><span>책임</span><span>-</span></div>
-      <div class="position-item"><span>선임</span><span>-</span></div>
-      <div class="position-item"><span>사원</span><span>-</span></div>
-      <div class="position-item"><span>CSM</span><span>-</span></div>
-    </div>
-  </div>
-
-  <!-- 테이블 -->
-  <div class="table-wrap hidden" id="tableWrap">
-    <table>
-      <thead>
-        <tr>
-          <th>사번</th>
-          <th>이름</th>
-          <th>매장</th>
-          <th>담당</th>
-          <th>팀장</th>
-          <th>직급</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody"></tbody>
-    </table>
-  </div>
+<div class="panel">
+<table>
+<thead>
+<tr>
+<th>사번</th>
+<th>이름</th>
+<th>매장</th>
+<th>담당</th>
+<th>팀장</th>
+<th>직급</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
 
 </div>
 
 <script>
 const supabase = window.supabase.createClient(
-  'https://ytnxmnbctujuopbqpurl.supabase.co',
-  'sb_publishable_4oBm89ecivuVF6StOBz7yg_qNBItC4z'
+'https://ytnxmnbctujuopbqpurl.supabase.co',
+'sb_publishable_4oBm89ecivuVF6StOBz7yg_qNBItC4z'
 );
 
-const tableBody = document.getElementById("tableBody");
-const tableWrap = document.getElementById("tableWrap");
-const countBadge = document.getElementById("countBadge");
+async function init(){
 
-async function loadData() {
-  const { data } = await supabase
-    .from("au_employee_directory_view")
-    .select("*");
+// 1. 로그인 체크
+const { data:{ user } } = await supabase.auth.getUser();
 
-  render(data || []);
+if(!user){
+location.href="index.html";
+return;
 }
 
-function render(rows) {
+// 2. DB 조회
+const { data, error } = await supabase
+.from("au_employee_directory_view")
+.select("*");
 
-  countBadge.textContent = `총 ${rows.length}명`;
-
-  // 테이블
-  tableBody.innerHTML = rows.map(r => `
-    <tr>
-      <td>${r.employee_no}</td>
-      <td>${r.name}</td>
-      <td>${r.store_name || '-'}</td>
-      <td>${r.manager_name || '-'}</td>
-      <td>${r.team_leader_name || '-'}</td>
-      <td>${r.position_name || '-'}</td>
-    </tr>
-  `).join("");
-
-  tableWrap.classList.remove("hidden");
-
-  // 직급 집계
-  const counts = {};
-  rows.forEach(r => {
-    const p = r.position_name;
-    if (!p) return;
-    counts[p] = (counts[p] || 0) + 1;
-  });
-
-  document.querySelectorAll(".position-item").forEach(el => {
-    const label = el.children[0].innerText;
-    const value = counts[label] || 0;
-    el.children[1].innerText = value ? value : "-";
-  });
+if(error){
+console.error(error);
+alert(error.message);
+return;
 }
 
-loadData();
+render(data);
+}
+
+function render(rows){
+
+document.getElementById("count").innerText = `총 ${rows.length}명`;
+
+document.getElementById("tbody").innerHTML =
+rows.map(r=>`
+<tr>
+<td>${r.employee_no}</td>
+<td>${r.name}</td>
+<td>${r.store_name||'-'}</td>
+<td>${r.manager_name||'-'}</td>
+<td>${r.team_leader_name||'-'}</td>
+<td>${r.position_name||'-'}</td>
+</tr>
+`).join("");
+
+// 직급 집계
+const counts = {};
+rows.forEach(r=>{
+if(!r.position_name) return;
+counts[r.position_name] = (counts[r.position_name]||0)+1;
+});
+
+document.querySelectorAll(".position-item").forEach(el=>{
+const label = el.children[0].innerText;
+const v = counts[label] || 0;
+el.children[1].innerText = v ? v : "-";
+});
+}
+
+async function logout(){
+await supabase.auth.signOut();
+location.href="index.html";
+}
+
+init();
 </script>
+
 </body>
 </html>
