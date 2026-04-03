@@ -191,7 +191,7 @@
       </div>
       <div style="display:flex; gap:8px;">
         <button class="btn btn-gray" id="refreshBtn">새로고침</button>
-        <button class="btn btn-dark" id="logoutBtn">로그아웃</button>
+        <button class="btn btn-dark" id="gofrontBtn">홈으로</button>
       </div>
     </div>
 
@@ -484,9 +484,8 @@
       await loadPendingRequests();
     }
 
-    async function logout() {
-      await supabaseClient.auth.signOut();
-      location.href = 'index.html';
+      function gofront() {
+      location.href = 'front.html';
     }
 
     document.getElementById('approveBtn').addEventListener('click', async () => {
@@ -513,7 +512,7 @@
       }
     });
 
-    document.getElementById('logoutBtn').addEventListener('click', logout);
+    document.getElementById('gofrontBtn').addEventListener('click', gofront);
 
     (async function init() {
       try {
