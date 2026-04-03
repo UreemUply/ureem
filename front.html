@@ -359,16 +359,10 @@
   </div>
 
 <script>
-  // =========================
-  // 1) Supabase 설정
-  // =========================
   const SUPABASE_URL = 'https://ytnxmnbctujuopbqpurl.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_4oBm89ecivuVF6StOBz7yg_qNBItC4z';
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // =========================
-  // 2) 컬럼명 매핑
-  // =========================
   const COLUMN_MAP = {
     directory: {
       employeeNo: "employee_no",
@@ -381,12 +375,7 @@
     account: {
       authUserId: "auth_user_id",
       employeeNo: "employee_no",
-      status: "status",
-      systemRoleId: "system_role_id"
-    },
-    role: {
-      roleKey: "role_key",
-      code: "code"
+      status: "status"
     }
   };
 
@@ -416,8 +405,6 @@
   let allRows = [];
   let filteredRows = [];
   let currentUser = null;
-  let currentAccount = null;
-  let currentRole = "viewer";
 
   function setLoading(isLoading) {
     loadingBox.classList.toggle("hidden", !isLoading);
@@ -467,17 +454,6 @@
     selectEl.value = values.includes(current) ? current : "";
   }
 
-  function getRoleValue(accountRow) {
-    if (!accountRow) return "viewer";
-
-    const nestedRole = accountRow.au_system_roles;
-    if (nestedRole && typeof nestedRole === "object") {
-      return nestedRole[COLUMN_MAP.role.roleKey] || nestedRole[COLUMN_MAP.role.code] || "viewer";
-    }
-
-    return accountRow.role_key || accountRow.code || "viewer";
-  }
-
   function normalizeAccountStatus(status) {
     return String(status || "").toLowerCase().trim();
   }
@@ -485,39 +461,32 @@
   function buildCard(row) {
     const c = COLUMN_MAP.directory;
 
-    const employeeName = row[c.employeeName] ?? "-";
-    const employeeNo = row[c.employeeNo] ?? "-";
-    const storeName = row[c.storeName] ?? "-";
-    const assigneeName = row[c.assigneeName] ?? "-";
-    const teamLeaderName = row[c.teamLeaderName] ?? "-";
-    const positionName = row[c.positionName] ?? "-";
-
     return `
       <div class="card">
         <div class="card-top">
           <div>
-            <h3 class="name">${escapeHtml(employeeName)}</h3>
-            <div class="employee-no">사번 ${escapeHtml(employeeNo)}</div>
+            <h3 class="name">${escapeHtml(row[c.employeeName] ?? "-")}</h3>
+            <div class="employee-no">사번 ${escapeHtml(row[c.employeeNo] ?? "-")}</div>
           </div>
-          <div class="position-chip">${escapeHtml(positionName)}</div>
+          <div class="position-chip">${escapeHtml(row[c.positionName] ?? "-")}</div>
         </div>
 
         <div class="meta">
           <div class="meta-row">
             <div class="meta-label">매장</div>
-            <div class="meta-value">${escapeHtml(storeName)}</div>
+            <div class="meta-value">${escapeHtml(row[c.storeName] ?? "-")}</div>
           </div>
           <div class="meta-row">
             <div class="meta-label">담당</div>
-            <div class="meta-value">${escapeHtml(assigneeName)}</div>
+            <div class="meta-value">${escapeHtml(row[c.assigneeName] ?? "-")}</div>
           </div>
           <div class="meta-row">
             <div class="meta-label">팀장</div>
-            <div class="meta-value">${escapeHtml(teamLeaderName)}</div>
+            <div class="meta-value">${escapeHtml(row[c.teamLeaderName] ?? "-")}</div>
           </div>
           <div class="meta-row">
             <div class="meta-label">직급</div>
-            <div class="meta-value">${escapeHtml(positionName)}</div>
+            <div class="meta-value">${escapeHtml(row[c.positionName] ?? "-")}</div>
           </div>
         </div>
       </div>
@@ -540,7 +509,7 @@
     emptyBox.classList.add("hidden");
     listGrid.classList.remove("hidden");
     listGrid.innerHTML = rows.map(buildCard).join("");
-    statusText.textContent = `조회 완료`;
+    statusText.textContent = "조회 완료";
   }
 
   function applyFilters() {
@@ -560,17 +529,13 @@
       const teamLeaderName = String(row[c.teamLeaderName] ?? "");
       const positionName = String(row[c.positionName] ?? "");
 
-      const matchKeyword =
-        !keyword ||
-        employeeName.includes(keyword) ||
-        employeeNo.includes(keyword);
-
-      const matchStore = !store || storeName === store;
-      const matchAssignee = !assignee || assigneeName === assignee;
-      const matchTeamLeader = !teamLeader || teamLeaderName === teamLeader;
-      const matchPosition = !position || positionName === position;
-
-      return matchKeyword && matchStore && matchAssignee && matchTeamLeader && matchPosition;
+      return (
+        (!keyword || employeeName.includes(keyword) || employeeNo.includes(keyword)) &&
+        (!store || storeName === store) &&
+        (!assignee || assigneeName === assignee) &&
+        (!teamLeader || teamLeaderName === teamLeader) &&
+        (!position || positionName === position)
+      );
     });
 
     renderList(filteredRows);
@@ -588,7 +553,6 @@
 
   function setupFilterOptions(rows) {
     const c = COLUMN_MAP.directory;
-
     fillSelect(storeFilter, uniqueSortedValues(rows, c.storeName));
     fillSelect(assigneeFilter, uniqueSortedValues(rows, c.assigneeName));
     fillSelect(teamLeaderFilter, uniqueSortedValues(rows, c.teamLeaderName));
@@ -597,93 +561,67 @@
 
   async function ensureLoggedIn() {
     const { data, error } = await supabaseClient.auth.getUser();
-
     if (error || !data?.user) {
       location.href = "index.html";
       return null;
     }
-
     currentUser = data.user;
     return data.user;
   }
 
-  async function loadMyAccount() {
-    const a = COLUMN_MAP.account;
+  async function tryLoadMyAccountForAdminButton() {
+    try {
+      const a = COLUMN_MAP.account;
 
-    const { data, error } = await supabaseClient
-      .from("au_employee_accounts")
-      .select(`
-        ${a.employeeNo},
-        ${a.status},
-        ${a.authUserId},
-        ${a.systemRoleId},
-        au_system_roles(*)
-      `)
-      .eq(a.authUserId, currentUser.id)
-      .maybeSingle();
+      const { data, error } = await supabaseClient
+        .from("au_employee_accounts")
+        .select(`${a.employeeNo}, ${a.status}, ${a.authUserId}`)
+        .eq(a.authUserId, currentUser.id)
+        .maybeSingle();
 
-    if (error) {
-      throw new Error("내 계정 정보를 불러오지 못했어. RLS 정책 또는 select 권한을 확인해야 해.");
+      if (error) {
+        console.warn("계정 보조정보 조회 실패:", error.message);
+        roleText.textContent = "권한: 확인 불가";
+        adminBtn.style.display = "none";
+        return;
+      }
+
+      if (!data) {
+        roleText.textContent = "권한: 일반 사용자";
+        adminBtn.style.display = "none";
+        return;
+      }
+
+      const status = normalizeAccountStatus(data[a.status]);
+      if (["pending", "rejected", "disabled"].includes(status)) {
+        await supabaseClient.auth.signOut();
+        location.href = "index.html";
+        return;
+      }
+
+      const employeeNo = data[a.employeeNo] ?? "-";
+      welcomeText.textContent = `${employeeNo} 로그인됨`;
+      roleText.textContent = "권한: 일반 사용자";
+      adminBtn.style.display = "none";
+    } catch (err) {
+      console.warn("관리자 버튼 판별 실패:", err);
+      roleText.textContent = "권한: 확인 불가";
+      adminBtn.style.display = "none";
     }
-
-    if (!data) {
-      throw new Error("로그인된 계정의 직원 연결 정보가 없어. au_employee_accounts 매핑을 확인해야 해.");
-    }
-
-    currentAccount = data;
-    currentRole = String(getRoleValue(data)).toLowerCase();
-
-    const status = normalizeAccountStatus(data[a.status]);
-
-    if (status === "pending") {
-      await supabaseClient.auth.signOut();
-      alert("아직 승인되지 않은 계정이야.");
-      location.href = "index.html";
-      return false;
-    }
-
-    if (status === "rejected") {
-      await supabaseClient.auth.signOut();
-      alert("거절된 계정이야. 관리자에게 문의해.");
-      location.href = "index.html";
-      return false;
-    }
-
-    if (status === "disabled") {
-      await supabaseClient.auth.signOut();
-      alert("비활성화된 계정이야. 관리자에게 문의해.");
-      location.href = "index.html";
-      return false;
-    }
-
-    const employeeNo = data[a.employeeNo] ?? "-";
-    welcomeText.textContent = `${employeeNo} 로그인됨`;
-    roleText.textContent = `권한: ${currentRole}`;
-
-    adminBtn.style.display = currentRole === "admin" ? "inline-flex" : "none";
-
-    return true;
   }
 
   async function loadDirectory() {
     setLoading(true);
 
     const c = COLUMN_MAP.directory;
-
     const { data, error } = await supabaseClient
       .from("au_employee_directory_view")
-      .select(`
-        ${c.employeeNo},
-        ${c.employeeName},
-        ${c.storeName},
-        ${c.assigneeName},
-        ${c.teamLeaderName},
-        ${c.positionName}
-      `)
+      .select(`${c.employeeNo}, ${c.employeeName}, ${c.storeName}, ${c.assigneeName}, ${c.teamLeaderName}, ${c.positionName}`)
       .order(c.employeeName, { ascending: true });
 
     if (error) {
-      throw new Error("조직도 데이터를 불러오지 못했어. view 컬럼명이나 RLS/view 권한을 확인해야 해.");
+      console.error("au_employee_directory_view 조회 오류:", error);
+      throw new Error(`조직도 데이터를 불러오지 못했어. 상세 오류: ${error.message}`);
     }
 
     allRows = Array.isArray(data) ? data : [];
@@ -728,53 +666,21 @@
     }
   });
 
-async function init() {
-  try {
-    statusText.textContent = "로그인 상태 확인 중...";
-    await ensureLoggedIn();
+  async function init() {
+    try {
+      statusText.textContent = "로그인 상태 확인 중...";
+      await ensureLoggedIn();
 
-    statusText.textContent = "조직도 조회 중...";
-    await loadDirectory();
+      statusText.textContent = "조직도 조회 중...";
+      await loadDirectory();
 
-async function tryLoadMyAccountForAdminButton() {
-  try {
-    const a = COLUMN_MAP.account;
-
-    const { data, error } = await supabaseClient
-      .from("au_employee_accounts")
-      .select(`
-        ${a.employeeNo},
-        ${a.status},
-        ${a.authUserId}
-      `)
-      .eq(a.authUserId, currentUser.id)
-      .maybeSingle();
-
-    if (error) {
-      console.warn("계정 보조정보 조회 실패:", error.message);
-      roleText.textContent = "권한: 확인 불가";
-      adminBtn.style.display = "none";
-      return;
+      await tryLoadMyAccountForAdminButton();
+    } catch (err) {
+      console.error(err);
+      showError(err.message || "초기 로딩 중 오류가 발생했어.");
     }
-
-    if (!data) {
-      roleText.textContent = "권한: 일반 사용자";
-      adminBtn.style.display = "none";
-      return;
-    }
-
-    const employeeNo = data[a.employeeNo] ?? "-";
-    welcomeText.textContent = `${employeeNo} 로그인됨`;
-
-    // 여기서는 일단 관리자 판별 불명확하므로 숨김
-    roleText.textContent = "권한: 일반 사용자";
-    adminBtn.style.display = "none";
-  } catch (err) {
-    console.warn("관리자 버튼 판별 실패:", err);
-    roleText.textContent = "권한: 확인 불가";
-    adminBtn.style.display = "none";
   }
-}
+
   init();
 </script>
 </body>
