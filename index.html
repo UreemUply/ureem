@@ -157,8 +157,8 @@
 <body>
   <div class="login-wrap">
     <div class="title-area">
-      <h1>사내 시스템 로그인</h1>
-      <p>사번과 비밀번호를 입력해서 로그인해.</p>
+      <h1>사내 조직도 시스템</h1>
+      <p>유림텔레콤</p>
     </div>
 
     <div class="field">
@@ -173,11 +173,11 @@
 
     <div class="actions">
       <button type="button" class="btn btn-login" id="loginBtn">로그인</button>
-      <button type="button" class="btn btn-signup" id="signupBtn">회원가입 신청</button>
+      <button type="button" class="btn btn-signup" id="signupBtn">회원가입</button>
     </div>
 
     <div class="helper">
-      승인된 계정만 로그인 가능하다.
+      회원가입 이후 관리자의 승인이 필요합니다
     </div>
 
     <div class="loading-text" id="loadingText">처리 중...</div>
@@ -233,7 +233,7 @@
       }
 
       if (!data || !data.length) {
-        throw new Error("해당 사번으로 로그인 가능한 계정을 찾지 못했어.");
+        throw new Error("해당 사번으로 로그인 가능한 계정이 없습니다");
       }
 
       return data[0];
@@ -246,13 +246,13 @@
       const password = passwordInput.value.trim();
 
       if (!employeeNo) {
-        showMessage("사번을 입력해.");
+        showMessage("사번을 입력해주세요");
         employeeNoInput.focus();
         return;
       }
 
       if (!password) {
-        showMessage("비밀번호를 입력해.");
+        showMessage("비밀번호를 입력해주세요");
         passwordInput.focus();
         return;
       }
@@ -267,19 +267,19 @@
         const accountStatus = String(account.account_status || "").toLowerCase();
 
         if (!loginEmail) {
-          throw new Error("로그인 이메일 정보가 없어. 관리자에게 문의해.");
+          throw new Error("로그인 이메일 정보가 없습니다. 관리자 문의.");
         }
 
         if (signupApproved !== true) {
-          throw new Error("아직 승인되지 않은 계정이야.");
+          throw new Error("아직 승인되지 않은 계정입니다");
         }
 
         if (accountStatus === "disabled") {
-          throw new Error("비활성화된 계정이야. 관리자에게 문의해.");
+          throw new Error("비활성화된 계정입니다. 관리자 문의.");
         }
 
         if (accountStatus === "locked") {
-          throw new Error("잠긴 계정이야. 관리자에게 문의해.");
+          throw new Error("잠긴 계정입니다. 관리자 문의.");
         }
 
         const { error: signInError } = await supabaseClient.auth.signInWithPassword({
