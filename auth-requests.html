@@ -486,7 +486,7 @@
 
     async function logout() {
       await supabaseClient.auth.signOut();
-      location.href = 'login.html';
+      location.href = 'index.html';
     }
 
     document.getElementById('approveBtn').addEventListener('click', async () => {
