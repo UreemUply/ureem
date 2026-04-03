@@ -358,419 +358,393 @@
     <div id="listGrid" class="list-grid hidden"></div>
   </div>
 
-  <script>
-    // =========================
-    // 1) Supabase 설정
-    // =========================
-    const SUPABASE_URL = 'https://ytnxmnbctujuopbqpurl.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_4oBm89ecivuVF6StOBz7yg_qNBItC4z';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+<script>
+  // =========================
+  // 1) Supabase 설정
+  // =========================
+  const SUPABASE_URL = 'https://ytnxmnbctujuopbqpurl.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_4oBm89ecivuVF6StOBz7yg_qNBItC4z';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // =========================
-    // 2) 컬럼명 매핑
-    // 실제 DB 컬럼명 다르면 여기만 수정
-    // =========================
-    const COLUMN_MAP = {
-      directory: {
-        employeeNo: "employee_no",
-        employeeName: "employee_name",
-        storeName: "store_name",
-        assigneeName: "assignee_name",
-        teamLeaderName: "team_leader_name",
-        positionName: "position_name"
-      },
-      account: {
-        authUserId: "auth_user_id",
-        employeeNo: "employee_no",
-        status: "status",
-        systemRoleId: "system_role_id"
-      },
-      role: {
-        roleKey: "role_key", // 실제로 code 라면 아래 getRoleValue()에서 보정 가능
-        code: "code"
-      }
-    };
-
-    // =========================
-    // 3) DOM
-    // =========================
-    const welcomeText = document.getElementById("welcomeText");
-    const adminBtn = document.getElementById("adminBtn");
-    const refreshBtn = document.getElementById("refreshBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-
-    const searchInput = document.getElementById("searchInput");
-    const storeFilter = document.getElementById("storeFilter");
-    const assigneeFilter = document.getElementById("assigneeFilter");
-    const teamLeaderFilter = document.getElementById("teamLeaderFilter");
-    const positionFilter = document.getElementById("positionFilter");
-    const searchBtn = document.getElementById("searchBtn");
-    const resetBtn = document.getElementById("resetBtn");
-
-    const countBadge = document.getElementById("countBadge");
-    const roleText = document.getElementById("roleText");
-    const statusText = document.getElementById("statusText");
-
-    const loadingBox = document.getElementById("loadingBox");
-    const errorBox = document.getElementById("errorBox");
-    const errorMessage = document.getElementById("errorMessage");
-    const emptyBox = document.getElementById("emptyBox");
-    const listGrid = document.getElementById("listGrid");
-
-    // =========================
-    // 4) 상태
-    // =========================
-    let allRows = [];
-    let filteredRows = [];
-    let currentUser = null;
-    let currentAccount = null;
-    let currentRole = "viewer";
-
-    // =========================
-    // 5) 공통 함수
-    // =========================
-    function setLoading(isLoading) {
-      loadingBox.classList.toggle("hidden", !isLoading);
-      if (isLoading) {
-        errorBox.classList.add("hidden");
-        emptyBox.classList.add("hidden");
-        listGrid.classList.add("hidden");
-      }
+  // =========================
+  // 2) 컬럼명 매핑
+  // =========================
+  const COLUMN_MAP = {
+    directory: {
+      employeeNo: "employee_no",
+      employeeName: "employee_name",
+      storeName: "store_name",
+      assigneeName: "assignee_name",
+      teamLeaderName: "team_leader_name",
+      positionName: "position_name"
+    },
+    account: {
+      authUserId: "auth_user_id",
+      employeeNo: "employee_no",
+      status: "status",
+      systemRoleId: "system_role_id"
+    },
+    role: {
+      roleKey: "role_key",
+      code: "code"
     }
+  };
 
-    function showError(message) {
-      loadingBox.classList.add("hidden");
-      listGrid.classList.add("hidden");
+  const welcomeText = document.getElementById("welcomeText");
+  const adminBtn = document.getElementById("adminBtn");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  const searchInput = document.getElementById("searchInput");
+  const storeFilter = document.getElementById("storeFilter");
+  const assigneeFilter = document.getElementById("assigneeFilter");
+  const teamLeaderFilter = document.getElementById("teamLeaderFilter");
+  const positionFilter = document.getElementById("positionFilter");
+  const searchBtn = document.getElementById("searchBtn");
+  const resetBtn = document.getElementById("resetBtn");
+
+  const countBadge = document.getElementById("countBadge");
+  const roleText = document.getElementById("roleText");
+  const statusText = document.getElementById("statusText");
+
+  const loadingBox = document.getElementById("loadingBox");
+  const errorBox = document.getElementById("errorBox");
+  const errorMessage = document.getElementById("errorMessage");
+  const emptyBox = document.getElementById("emptyBox");
+  const listGrid = document.getElementById("listGrid");
+
+  let allRows = [];
+  let filteredRows = [];
+  let currentUser = null;
+  let currentAccount = null;
+  let currentRole = "viewer";
+
+  function setLoading(isLoading) {
+    loadingBox.classList.toggle("hidden", !isLoading);
+    if (isLoading) {
+      errorBox.classList.add("hidden");
       emptyBox.classList.add("hidden");
-      errorBox.classList.remove("hidden");
-      errorMessage.textContent = message;
-      statusText.textContent = "오류 발생";
+      listGrid.classList.add("hidden");
+    }
+  }
+
+  function showError(message) {
+    loadingBox.classList.add("hidden");
+    listGrid.classList.add("hidden");
+    emptyBox.classList.add("hidden");
+    errorBox.classList.remove("hidden");
+    errorMessage.textContent = message;
+    statusText.textContent = "오류 발생";
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function uniqueSortedValues(rows, key) {
+    const values = rows
+      .map(row => row[key])
+      .filter(v => v !== null && v !== undefined && String(v).trim() !== "")
+      .map(v => String(v).trim());
+
+    return [...new Set(values)].sort((a, b) => a.localeCompare(b, "ko"));
+  }
+
+  function fillSelect(selectEl, values) {
+    const current = selectEl.value;
+    selectEl.innerHTML = `<option value="">전체</option>`;
+    values.forEach(value => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      selectEl.appendChild(option);
+    });
+    selectEl.value = values.includes(current) ? current : "";
+  }
+
+  function getRoleValue(accountRow) {
+    if (!accountRow) return "viewer";
+
+    const nestedRole = accountRow.au_system_roles;
+    if (nestedRole && typeof nestedRole === "object") {
+      return nestedRole[COLUMN_MAP.role.roleKey] || nestedRole[COLUMN_MAP.role.code] || "viewer";
     }
 
-    function escapeHtml(value) {
-      return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
+    return accountRow.role_key || accountRow.code || "viewer";
+  }
 
-    function uniqueSortedValues(rows, key) {
-      const values = rows
-        .map(row => row[key])
-        .filter(v => v !== null && v !== undefined && String(v).trim() !== "")
-        .map(v => String(v).trim());
+  function normalizeAccountStatus(status) {
+    return String(status || "").toLowerCase().trim();
+  }
 
-      return [...new Set(values)].sort((a, b) => a.localeCompare(b, "ko"));
-    }
+  function buildCard(row) {
+    const c = COLUMN_MAP.directory;
 
-    function fillSelect(selectEl, values) {
-      const current = selectEl.value;
-      selectEl.innerHTML = `<option value="">전체</option>`;
-      values.forEach(value => {
-        const option = document.createElement("option");
-        option.value = value;
-        option.textContent = value;
-        selectEl.appendChild(option);
-      });
-      selectEl.value = values.includes(current) ? current : "";
-    }
+    const employeeName = row[c.employeeName] ?? "-";
+    const employeeNo = row[c.employeeNo] ?? "-";
+    const storeName = row[c.storeName] ?? "-";
+    const assigneeName = row[c.assigneeName] ?? "-";
+    const teamLeaderName = row[c.teamLeaderName] ?? "-";
+    const positionName = row[c.positionName] ?? "-";
 
-    function getRoleValue(accountRow) {
-      if (!accountRow) return "viewer";
-
-      const nestedRole = accountRow.au_system_roles;
-      if (nestedRole && typeof nestedRole === "object") {
-        return nestedRole[COLUMN_MAP.role.roleKey] || nestedRole[COLUMN_MAP.role.code] || "viewer";
-      }
-
-      return accountRow.role_key || accountRow.code || "viewer";
-    }
-
-    function normalizeAccountStatus(status) {
-      return String(status || "").toLowerCase().trim();
-    }
-
-    function buildCard(row) {
-      const c = COLUMN_MAP.directory;
-
-      const employeeName = row[c.employeeName] ?? "-";
-      const employeeNo = row[c.employeeNo] ?? "-";
-      const storeName = row[c.storeName] ?? "-";
-      const assigneeName = row[c.assigneeName] ?? "-";
-      const teamLeaderName = row[c.teamLeaderName] ?? "-";
-      const positionName = row[c.positionName] ?? "-";
-
-      return `
-        <div class="card">
-          <div class="card-top">
-            <div>
-              <h3 class="name">${escapeHtml(employeeName)}</h3>
-              <div class="employee-no">사번 ${escapeHtml(employeeNo)}</div>
-            </div>
-            <div class="position-chip">${escapeHtml(positionName)}</div>
+    return `
+      <div class="card">
+        <div class="card-top">
+          <div>
+            <h3 class="name">${escapeHtml(employeeName)}</h3>
+            <div class="employee-no">사번 ${escapeHtml(employeeNo)}</div>
           </div>
+          <div class="position-chip">${escapeHtml(positionName)}</div>
+        </div>
 
-          <div class="meta">
-            <div class="meta-row">
-              <div class="meta-label">매장</div>
-              <div class="meta-value">${escapeHtml(storeName)}</div>
-            </div>
-            <div class="meta-row">
-              <div class="meta-label">담당</div>
-              <div class="meta-value">${escapeHtml(assigneeName)}</div>
-            </div>
-            <div class="meta-row">
-              <div class="meta-label">팀장</div>
-              <div class="meta-value">${escapeHtml(teamLeaderName)}</div>
-            </div>
-            <div class="meta-row">
-              <div class="meta-label">직급</div>
-              <div class="meta-value">${escapeHtml(positionName)}</div>
-            </div>
+        <div class="meta">
+          <div class="meta-row">
+            <div class="meta-label">매장</div>
+            <div class="meta-value">${escapeHtml(storeName)}</div>
+          </div>
+          <div class="meta-row">
+            <div class="meta-label">담당</div>
+            <div class="meta-value">${escapeHtml(assigneeName)}</div>
+          </div>
+          <div class="meta-row">
+            <div class="meta-label">팀장</div>
+            <div class="meta-value">${escapeHtml(teamLeaderName)}</div>
+          </div>
+          <div class="meta-row">
+            <div class="meta-label">직급</div>
+            <div class="meta-value">${escapeHtml(positionName)}</div>
           </div>
         </div>
-      `;
+      </div>
+    `;
+  }
+
+  function renderList(rows) {
+    loadingBox.classList.add("hidden");
+    errorBox.classList.add("hidden");
+
+    countBadge.textContent = `총 ${rows.length}명`;
+
+    if (!rows.length) {
+      listGrid.classList.add("hidden");
+      emptyBox.classList.remove("hidden");
+      statusText.textContent = "검색 결과 없음";
+      return;
     }
 
-    function renderList(rows) {
-      loadingBox.classList.add("hidden");
-      errorBox.classList.add("hidden");
+    emptyBox.classList.add("hidden");
+    listGrid.classList.remove("hidden");
+    listGrid.innerHTML = rows.map(buildCard).join("");
+    statusText.textContent = `조회 완료`;
+  }
 
-      countBadge.textContent = `총 ${rows.length}명`;
+  function applyFilters() {
+    const c = COLUMN_MAP.directory;
 
-      if (!rows.length) {
-        listGrid.classList.add("hidden");
-        emptyBox.classList.remove("hidden");
-        statusText.textContent = "검색 결과 없음";
-        return;
-      }
+    const keyword = searchInput.value.trim().toLowerCase();
+    const store = storeFilter.value;
+    const assignee = assigneeFilter.value;
+    const teamLeader = teamLeaderFilter.value;
+    const position = positionFilter.value;
 
-      emptyBox.classList.add("hidden");
-      listGrid.classList.remove("hidden");
-      listGrid.innerHTML = rows.map(buildCard).join("");
-      statusText.textContent = `조회 완료`;
-    }
+    filteredRows = allRows.filter(row => {
+      const employeeName = String(row[c.employeeName] ?? "").toLowerCase();
+      const employeeNo = String(row[c.employeeNo] ?? "").toLowerCase();
+      const storeName = String(row[c.storeName] ?? "");
+      const assigneeName = String(row[c.assigneeName] ?? "");
+      const teamLeaderName = String(row[c.teamLeaderName] ?? "");
+      const positionName = String(row[c.positionName] ?? "");
 
-    function applyFilters() {
-      const c = COLUMN_MAP.directory;
+      const matchKeyword =
+        !keyword ||
+        employeeName.includes(keyword) ||
+        employeeNo.includes(keyword);
 
-      const keyword = searchInput.value.trim().toLowerCase();
-      const store = storeFilter.value;
-      const assignee = assigneeFilter.value;
-      const teamLeader = teamLeaderFilter.value;
-      const position = positionFilter.value;
+      const matchStore = !store || storeName === store;
+      const matchAssignee = !assignee || assigneeName === assignee;
+      const matchTeamLeader = !teamLeader || teamLeaderName === teamLeader;
+      const matchPosition = !position || positionName === position;
 
-      filteredRows = allRows.filter(row => {
-        const employeeName = String(row[c.employeeName] ?? "").toLowerCase();
-        const employeeNo = String(row[c.employeeNo] ?? "").toLowerCase();
-        const storeName = String(row[c.storeName] ?? "");
-        const assigneeName = String(row[c.assigneeName] ?? "");
-        const teamLeaderName = String(row[c.teamLeaderName] ?? "");
-        const positionName = String(row[c.positionName] ?? "");
-
-        const matchKeyword =
-          !keyword ||
-          employeeName.includes(keyword) ||
-          employeeNo.includes(keyword);
-
-        const matchStore = !store || storeName === store;
-        const matchAssignee = !assignee || assigneeName === assignee;
-        const matchTeamLeader = !teamLeader || teamLeaderName === teamLeader;
-        const matchPosition = !position || positionName === position;
-
-        return matchKeyword && matchStore && matchAssignee && matchTeamLeader && matchPosition;
-      });
-
-      renderList(filteredRows);
-    }
-
-    function resetFilters() {
-      searchInput.value = "";
-      storeFilter.value = "";
-      assigneeFilter.value = "";
-      teamLeaderFilter.value = "";
-      positionFilter.value = "";
-      filteredRows = [...allRows];
-      renderList(filteredRows);
-    }
-
-    function setupFilterOptions(rows) {
-      const c = COLUMN_MAP.directory;
-
-      fillSelect(storeFilter, uniqueSortedValues(rows, c.storeName));
-      fillSelect(assigneeFilter, uniqueSortedValues(rows, c.assigneeName));
-      fillSelect(teamLeaderFilter, uniqueSortedValues(rows, c.teamLeaderName));
-      fillSelect(positionFilter, uniqueSortedValues(rows, c.positionName));
-    }
-
-    // =========================
-    // 6) 인증 / 권한 / 상태 확인
-    // =========================
-    async function ensureLoggedIn() {
-      const { data, error } = await supabase.auth.getUser();
-
-      if (error || !data?.user) {
-        location.href = "index.html";
-        return null;
-      }
-
-      currentUser = data.user;
-      return data.user;
-    }
-
-    async function loadMyAccount() {
-      const a = COLUMN_MAP.account;
-
-      const { data, error } = await supabase
-        .from("au_employee_accounts")
-        .select(`
-          ${a.employeeNo},
-          ${a.status},
-          ${a.authUserId},
-          ${a.systemRoleId},
-          au_system_roles(*)
-        `)
-        .eq(a.authUserId, currentUser.id)
-        .maybeSingle();
-
-      if (error) {
-        throw new Error("내 계정 정보를 불러오지 못했어. RLS 정책 또는 select 권한을 확인해야 해.");
-      }
-
-      if (!data) {
-        throw new Error("로그인된 계정의 직원 연결 정보가 없어. au_employee_accounts 매핑을 확인해야 해.");
-      }
-
-      currentAccount = data;
-      currentRole = String(getRoleValue(data)).toLowerCase();
-
-      const status = normalizeAccountStatus(data[a.status]);
-
-      if (status === "pending") {
-        await supabase.auth.signOut();
-        alert("아직 승인되지 않은 계정이야.");
-        location.href = "index.html";
-        return false;
-      }
-
-      if (status === "rejected") {
-        await supabase.auth.signOut();
-        alert("거절된 계정이야. 관리자에게 문의해.");
-        location.href = "index.html";
-        return false;
-      }
-
-      if (status === "disabled") {
-        await supabase.auth.signOut();
-        alert("비활성화된 계정이야. 관리자에게 문의해.");
-        location.href = "index.html";
-        return false;
-      }
-
-      const employeeNo = data[a.employeeNo] ?? "-";
-      welcomeText.textContent = `${employeeNo} 로그인됨`;
-      roleText.textContent = `권한: ${currentRole}`;
-
-      if (currentRole === "admin") {
-        adminBtn.style.display = "inline-flex";
-      } else {
-        adminBtn.style.display = "none";
-      }
-
-      return true;
-    }
-
-    // =========================
-    // 7) 조직도 조회
-    // =========================
-    async function loadDirectory() {
-      setLoading(true);
-
-      const c = COLUMN_MAP.directory;
-
-      const { data, error } = await supabase
-        .from("au_employee_directory_view")
-        .select(`
-          ${c.employeeNo},
-          ${c.employeeName},
-          ${c.storeName},
-          ${c.assigneeName},
-          ${c.teamLeaderName},
-          ${c.positionName}
-        `)
-        .order(c.employeeName, { ascending: true });
-
-      if (error) {
-        throw new Error("조직도 데이터를 불러오지 못했어. view 컬럼명이나 RLS/view 권한을 확인해야 해.");
-      }
-
-      allRows = Array.isArray(data) ? data : [];
-      setupFilterOptions(allRows);
-      filteredRows = [...allRows];
-      renderList(filteredRows);
-    }
-
-    // =========================
-    // 8) 이벤트
-    // =========================
-    searchBtn.addEventListener("click", applyFilters);
-    resetBtn.addEventListener("click", resetFilters);
-    refreshBtn.addEventListener("click", async () => {
-      try {
-        statusText.textContent = "새로고침 중...";
-        await loadDirectory();
-      } catch (err) {
-        showError(err.message || "새로고침 중 오류가 발생했어.");
-      }
+      return matchKeyword && matchStore && matchAssignee && matchTeamLeader && matchPosition;
     });
 
-    adminBtn.addEventListener("click", () => {
-      location.href = "auth-requests.html";
-    });
+    renderList(filteredRows);
+  }
 
-    logoutBtn.addEventListener("click", async () => {
-      await supabase.auth.signOut();
+  function resetFilters() {
+    searchInput.value = "";
+    storeFilter.value = "";
+    assigneeFilter.value = "";
+    teamLeaderFilter.value = "";
+    positionFilter.value = "";
+    filteredRows = [...allRows];
+    renderList(filteredRows);
+  }
+
+  function setupFilterOptions(rows) {
+    const c = COLUMN_MAP.directory;
+
+    fillSelect(storeFilter, uniqueSortedValues(rows, c.storeName));
+    fillSelect(assigneeFilter, uniqueSortedValues(rows, c.assigneeName));
+    fillSelect(teamLeaderFilter, uniqueSortedValues(rows, c.teamLeaderName));
+    fillSelect(positionFilter, uniqueSortedValues(rows, c.positionName));
+  }
+
+  async function ensureLoggedIn() {
+    const { data, error } = await supabaseClient.auth.getUser();
+
+    if (error || !data?.user) {
       location.href = "index.html";
-    });
-
-    searchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") applyFilters();
-    });
-
-    storeFilter.addEventListener("change", applyFilters);
-    assigneeFilter.addEventListener("change", applyFilters);
-    teamLeaderFilter.addEventListener("change", applyFilters);
-    positionFilter.addEventListener("change", applyFilters);
-
-    // 세션 만료 대응
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
-        location.href = "index.html";
-      }
-    });
-
-    // =========================
-    // 9) 초기 실행
-    // =========================
-    async function init() {
-      try {
-        statusText.textContent = "로그인 상태 확인 중...";
-        await ensureLoggedIn();
-
-        const canContinue = await loadMyAccount();
-        if (!canContinue) return;
-
-        statusText.textContent = "조직도 조회 중...";
-        await loadDirectory();
-      } catch (err) {
-        console.error(err);
-        showError(err.message || "초기 로딩 중 오류가 발생했어.");
-      }
+      return null;
     }
 
-    init();
-  </script>
+    currentUser = data.user;
+    return data.user;
+  }
+
+  async function loadMyAccount() {
+    const a = COLUMN_MAP.account;
+
+    const { data, error } = await supabaseClient
+      .from("au_employee_accounts")
+      .select(`
+        ${a.employeeNo},
+        ${a.status},
+        ${a.authUserId},
+        ${a.systemRoleId},
+        au_system_roles(*)
+      `)
+      .eq(a.authUserId, currentUser.id)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error("내 계정 정보를 불러오지 못했어. RLS 정책 또는 select 권한을 확인해야 해.");
+    }
+
+    if (!data) {
+      throw new Error("로그인된 계정의 직원 연결 정보가 없어. au_employee_accounts 매핑을 확인해야 해.");
+    }
+
+    currentAccount = data;
+    currentRole = String(getRoleValue(data)).toLowerCase();
+
+    const status = normalizeAccountStatus(data[a.status]);
+
+    if (status === "pending") {
+      await supabaseClient.auth.signOut();
+      alert("아직 승인되지 않은 계정이야.");
+      location.href = "index.html";
+      return false;
+    }
+
+    if (status === "rejected") {
+      await supabaseClient.auth.signOut();
+      alert("거절된 계정이야. 관리자에게 문의해.");
+      location.href = "index.html";
+      return false;
+    }
+
+    if (status === "disabled") {
+      await supabaseClient.auth.signOut();
+      alert("비활성화된 계정이야. 관리자에게 문의해.");
+      location.href = "index.html";
+      return false;
+    }
+
+    const employeeNo = data[a.employeeNo] ?? "-";
+    welcomeText.textContent = `${employeeNo} 로그인됨`;
+    roleText.textContent = `권한: ${currentRole}`;
+
+    adminBtn.style.display = currentRole === "admin" ? "inline-flex" : "none";
+
+    return true;
+  }
+
+  async function loadDirectory() {
+    setLoading(true);
+
+    const c = COLUMN_MAP.directory;
+
+    const { data, error } = await supabaseClient
+      .from("au_employee_directory_view")
+      .select(`
+        ${c.employeeNo},
+        ${c.employeeName},
+        ${c.storeName},
+        ${c.assigneeName},
+        ${c.teamLeaderName},
+        ${c.positionName}
+      `)
+      .order(c.employeeName, { ascending: true });
+
+    if (error) {
+      throw new Error("조직도 데이터를 불러오지 못했어. view 컬럼명이나 RLS/view 권한을 확인해야 해.");
+    }
+
+    allRows = Array.isArray(data) ? data : [];
+    setupFilterOptions(allRows);
+    filteredRows = [...allRows];
+    renderList(filteredRows);
+  }
+
+  searchBtn.addEventListener("click", applyFilters);
+  resetBtn.addEventListener("click", resetFilters);
+
+  refreshBtn.addEventListener("click", async () => {
+    try {
+      statusText.textContent = "새로고침 중...";
+      await loadDirectory();
+    } catch (err) {
+      showError(err.message || "새로고침 중 오류가 발생했어.");
+    }
+  });
+
+  adminBtn.addEventListener("click", () => {
+    location.href = "auth-requests.html";
+  });
+
+  logoutBtn.addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    location.href = "index.html";
+  });
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") applyFilters();
+  });
+
+  storeFilter.addEventListener("change", applyFilters);
+  assigneeFilter.addEventListener("change", applyFilters);
+  teamLeaderFilter.addEventListener("change", applyFilters);
+  positionFilter.addEventListener("change", applyFilters);
+
+  supabaseClient.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT") {
+      location.href = "index.html";
+    }
+  });
+
+  async function init() {
+    try {
+      statusText.textContent = "로그인 상태 확인 중...";
+      await ensureLoggedIn();
+
+      const canContinue = await loadMyAccount();
+      if (!canContinue) return;
+
+      statusText.textContent = "조직도 조회 중...";
+      await loadDirectory();
+    } catch (err) {
+      console.error(err);
+      showError(err.message || "초기 로딩 중 오류가 발생했어.");
+    }
+  }
+
+  init();
+</script>
 </body>
 </html>
