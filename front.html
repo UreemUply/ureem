@@ -16,7 +16,7 @@
     }
 
     .wrap {
-      max-width: 1200px;
+      max-width: 1280px;
       margin: 0 auto;
       padding: 24px 16px 40px;
     }
@@ -215,7 +215,7 @@
     .employee-table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 920px;
+      min-width: 1100px;
     }
 
     .employee-table thead th {
@@ -242,6 +242,14 @@
 
     .employee-table tbody tr:last-child td {
       border-bottom: none;
+    }
+
+    .employee-table tbody tr.admin-row {
+      cursor: pointer;
+    }
+
+    .employee-table tbody tr.admin-row:hover {
+      background: #eef2ff;
     }
 
     .cell-name {
@@ -411,12 +419,12 @@
       <table class="employee-table">
         <thead>
           <tr>
-            <th>사번</th>
-            <th>이름</th>
-            <th>매장</th>
             <th>담당</th>
             <th>팀장</th>
+            <th>매장</th>
+            <th>직원명</th>
             <th>직급</th>
+            <th>연락처</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -436,7 +444,8 @@
         storeName: "store_name",
         managerName: "manager_name",
         teamLeaderName: "team_leader_name",
-        positionName: "position_name"
+        positionName: "position_name",
+        publicPhone: "public_phone"
       },
       account: {
         employeeNo: "employee_no",
@@ -482,6 +491,7 @@
     let allRows = [];
     let filteredRows = [];
     let currentUser = null;
+    let currentRole = "viewer";
 
     function setLoading(isLoading) {
       loadingBox.classList.toggle("hidden", !isLoading);
@@ -535,24 +545,35 @@
       return String(status || "").toLowerCase().trim();
     }
 
+    function goEdit(employeeNo) {
+      if (currentRole !== "admin") return;
+      location.href = `edit.html?employee_no=${encodeURIComponent(employeeNo)}`;
+    }
+
     function buildTableRow(row) {
       const c = COLUMN_MAP.directory;
 
+      const employeeNo = row[c.employeeNo] ?? "";
       const employeeName = row[c.employeeName] ?? "-";
-      const employeeNo = row[c.employeeNo] ?? "-";
       const storeName = row[c.storeName] ?? "-";
       const managerName = row[c.managerName] ?? "-";
       const teamLeaderName = row[c.teamLeaderName] ?? "-";
       const positionName = row[c.positionName] ?? "-";
+      const publicPhone = row[c.publicPhone] ?? "-";
+
+      const trClass = currentRole === "admin" ? "admin-row" : "";
+      const trClick = currentRole === "admin"
+        ? `onclick="goEdit('${String(employeeNo).replaceAll("'", "\\'")}')"`
+        : "";
 
       return `
-        <tr>
-          <td class="cell-muted">${escapeHtml(employeeNo)}</td>
-          <td class="cell-name">${escapeHtml(employeeName)}</td>
-          <td>${escapeHtml(storeName)}</td>
+        <tr class="${trClass}" ${trClick}>
           <td>${escapeHtml(managerName)}</td>
           <td>${escapeHtml(teamLeaderName)}</td>
+          <td>${escapeHtml(storeName)}</td>
+          <td class="cell-name">${escapeHtml(employeeName)}</td>
           <td>${escapeHtml(positionName)}</td>
+          <td class="cell-muted">${escapeHtml(publicPhone)}</td>
         </tr>
       `;
     }
@@ -595,7 +616,7 @@
       emptyBox.classList.add("hidden");
       tableWrap.classList.remove("hidden");
       tableBody.innerHTML = rows.map(buildTableRow).join("");
-      statusText.textContent = "조회 완료";
+      statusText.textContent = currentRole === "admin" ? "조회 완료 · 직원 클릭 시 수정 가능" : "조회 완료";
     }
 
     function applyFilters() {
@@ -757,7 +778,8 @@
           ${c.storeName},
           ${c.managerName},
           ${c.teamLeaderName},
-          ${c.positionName}
+          ${c.positionName},
+          ${c.publicPhone}
         `)
         .order(c.employeeName, { ascending: true });
 
@@ -799,18 +821,6 @@
           return;
         }
 
-        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-
-        if (sessionError) {
-          console.error("로그아웃 후 세션 확인 오류:", sessionError);
-        }
-
-        if (sessionData?.session) {
-          console.error("로그아웃 후에도 세션이 남아 있음:", sessionData.session);
-          alert("로그아웃이 완전히 처리되지 않았어. 다시 시도해줘.");
-          return;
-        }
-
         location.replace("index.html");
       } catch (err) {
         console.error("로그아웃 처리 예외:", err);
@@ -844,11 +854,13 @@
         const myAccount = await getMyAccount();
         validateAccount(myAccount);
 
-        const myRole = await getMyEmployeeRole(myAccount.employee_no);
+        currentRole = await getMyEmployeeRole(myAccount.employee_no);
 
         welcomeText.textContent = `${myAccount.employee_no} 로그인됨`;
-        roleText.textContent = `권한: ${myRole}`;
-        adminBtn.style.display = myRole === "admin" ? "inline-flex" : "none";
+        roleText.textContent = `권한: ${currentRole}`;
+        adminBtn.style.display = currentRole === "admin" ? "inline-flex" : "none";
+
+        renderList(filteredRows);
       } catch (err) {
         console.error(err);
         showError(err.message || "초기 로딩 중 오류가 발생했어.");
