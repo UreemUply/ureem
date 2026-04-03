@@ -728,22 +728,53 @@
     }
   });
 
-  async function init() {
-    try {
-      statusText.textContent = "로그인 상태 확인 중...";
-      await ensureLoggedIn();
+async function init() {
+  try {
+    statusText.textContent = "로그인 상태 확인 중...";
+    await ensureLoggedIn();
 
-      const canContinue = await loadMyAccount();
-      if (!canContinue) return;
+    statusText.textContent = "조직도 조회 중...";
+    await loadDirectory();
 
-      statusText.textContent = "조직도 조회 중...";
-      await loadDirectory();
-    } catch (err) {
-      console.error(err);
-      showError(err.message || "초기 로딩 중 오류가 발생했어.");
+async function tryLoadMyAccountForAdminButton() {
+  try {
+    const a = COLUMN_MAP.account;
+
+    const { data, error } = await supabaseClient
+      .from("au_employee_accounts")
+      .select(`
+        ${a.employeeNo},
+        ${a.status},
+        ${a.authUserId}
+      `)
+      .eq(a.authUserId, currentUser.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("계정 보조정보 조회 실패:", error.message);
+      roleText.textContent = "권한: 확인 불가";
+      adminBtn.style.display = "none";
+      return;
     }
-  }
 
+    if (!data) {
+      roleText.textContent = "권한: 일반 사용자";
+      adminBtn.style.display = "none";
+      return;
+    }
+
+    const employeeNo = data[a.employeeNo] ?? "-";
+    welcomeText.textContent = `${employeeNo} 로그인됨`;
+
+    // 여기서는 일단 관리자 판별 불명확하므로 숨김
+    roleText.textContent = "권한: 일반 사용자";
+    adminBtn.style.display = "none";
+  } catch (err) {
+    console.warn("관리자 버튼 판별 실패:", err);
+    roleText.textContent = "권한: 확인 불가";
+    adminBtn.style.display = "none";
+  }
+}
   init();
 </script>
 </body>
