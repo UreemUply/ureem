@@ -51,7 +51,7 @@
       font-size: 13px;
       font-weight: 600;
     }
-    input, select, button {
+    input, select, button, textarea {
       width: 100%;
       border: 1px solid #d8deea;
       border-radius: 10px;
@@ -59,7 +59,7 @@
       font-size: 14px;
       background: #fff;
     }
-    input:focus, select:focus {
+    input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: #6b8cff;
       box-shadow: 0 0 0 3px rgba(107,140,255,0.15);
@@ -228,6 +228,7 @@
     function showMessage(type, text) {
       messageBox.className = `msg ${type}`;
       messageBox.textContent = text;
+      messageBox.style.display = type ? 'block' : 'none';
     }
 
     function normalizePhone(phone) {
@@ -275,10 +276,15 @@
           .order('sort_order', { ascending: true })
       ]);
 
-      if (storesRes.error) throw new Error(storesRes.error.message);
-      if (managersRes.error) throw new Error(managersRes.error.message);
-      if (teamLeadersRes.error) throw new Error(teamLeadersRes.error.message);
-      if (positionsRes.error) throw new Error(positionsRes.error.message);
+      console.log('storesRes:', storesRes);
+      console.log('managersRes:', managersRes);
+      console.log('teamLeadersRes:', teamLeadersRes);
+      console.log('positionsRes:', positionsRes);
+
+      if (storesRes.error) throw new Error(`매장 불러오기 실패: ${storesRes.error.message}`);
+      if (managersRes.error) throw new Error(`담당 불러오기 실패: ${managersRes.error.message}`);
+      if (teamLeadersRes.error) throw new Error(`팀장 불러오기 실패: ${teamLeadersRes.error.message}`);
+      if (positionsRes.error) throw new Error(`직급 불러오기 실패: ${positionsRes.error.message}`);
 
       appendOptions(storeSelect, storesRes.data || [], 'store_name');
       appendOptions(managerSelect, managersRes.data || [], 'manager_name');
@@ -303,11 +309,14 @@
         request_status: 'pending'
       };
 
+      console.log('signup request payload:', payload);
+
       const { error } = await supabaseClient
         .from('au_signup_requests')
         .insert(payload);
 
       if (error) {
+        console.error('signup request error:', error);
         throw new Error(error.message);
       }
     }
@@ -317,6 +326,11 @@
         email,
         password
       });
+
+      console.log('signUp data:', data);
+      console.log('signUp error:', error);
+      console.log('user:', data?.user);
+      console.log('session:', data?.session);
 
       if (error) {
         throw new Error(error.message);
@@ -332,7 +346,6 @@
     signupForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       showMessage('', '');
-      messageBox.style.display = 'none';
 
       const formData = Object.fromEntries(new FormData(signupForm).entries());
 
@@ -354,11 +367,9 @@
 
         signupForm.reset();
 
-        showMessage(
-          'success',
-          '가입 신청 완료.'
-        );
+        showMessage('success', '가입 신청 완료.');
       } catch (error) {
+        console.error('signup process error:', error);
         showMessage('error', error.message || '가입 신청 중 오류가 발생.');
       } finally {
         submitBtn.disabled = false;
@@ -366,20 +377,11 @@
       }
     });
 
-    const { data, error } = await supabaseClient.auth.signUp({
-  email: form.email,
-  password: form.password
-});
-
-console.log('signUp data:', data);
-console.log('signUp error:', error);
-console.log('user:', data?.user);
-console.log('session:', data?.session);
-    
     (async function init() {
       try {
         await loadSelectOptions();
       } catch (error) {
+        console.error('init error:', error);
         showMessage('error', `초기 데이터 로딩 실패: ${error.message}`);
       }
     })();
