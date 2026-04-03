@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>사내 조직도</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     * { box-sizing: border-box; }
 
@@ -23,745 +24,228 @@
 
     .topbar {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      gap: 12px;
       margin-bottom: 20px;
-      flex-wrap: wrap;
     }
 
     .title-area h1 {
       margin: 0;
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 800;
-      letter-spacing: -0.3px;
-    }
-
-    .title-area p {
-      margin: 6px 0 0;
-      color: #666;
-      font-size: 14px;
-    }
-
-    .top-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
     }
 
     button {
       border: 0;
       cursor: pointer;
-      border-radius: 12px;
-      padding: 12px 16px;
-      font-size: 14px;
+      border-radius: 10px;
+      padding: 10px 14px;
       font-weight: 700;
     }
 
-    .btn-primary {
-      background: #111827;
-      color: #fff;
-    }
-
-    .btn-secondary {
-      background: #e5e7eb;
-      color: #111;
-    }
-
-    .btn-admin {
-      background: #e6007e;
-      color: #fff;
-      display: none;
-    }
+    .btn-primary { background:#111827; color:#fff; }
+    .btn-secondary { background:#e5e7eb; }
+    .btn-admin { background:#e6007e; color:#fff; display:none; }
 
     .panel {
-      background: #fff;
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-      margin-bottom: 16px;
+      background:#fff;
+      border-radius:16px;
+      padding:16px;
+      margin-bottom:14px;
     }
 
     .filter-grid {
-      display: grid;
-      grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
-      gap: 12px;
+      display:grid;
+      grid-template-columns: repeat(5,1fr);
+      gap:10px;
     }
 
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .field label {
-      font-size: 13px;
-      color: #555;
-      font-weight: 700;
-    }
-
-    .field input,
-    .field select {
-      width: 100%;
-      height: 44px;
-      border: 1px solid #d1d5db;
-      border-radius: 12px;
-      padding: 0 12px;
-      font-size: 14px;
-      background: #fff;
-      outline: none;
-    }
-
-    .field input:focus,
-    .field select:focus {
-      border-color: #111827;
-    }
-
-    .filter-actions {
-      margin-top: 14px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+    .field input, .field select {
+      width:100%;
+      height:40px;
+      border:1px solid #ddd;
+      border-radius:10px;
+      padding:0 10px;
     }
 
     .summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
+      display:flex;
+      justify-content:space-between;
     }
 
-    .summary-left {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
+    /* 직급 요약 */
+    .position-row {
+      display:grid;
+      gap:10px;
+      margin-bottom:10px;
     }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      height: 32px;
-      padding: 0 12px;
-      border-radius: 999px;
-      background: #eef2ff;
-      color: #3730a3;
-      font-size: 13px;
-      font-weight: 700;
+    .position-row:first-child {
+      grid-template-columns: repeat(6,1fr);
     }
 
-    .muted {
-      color: #666;
-      font-size: 14px;
+    .position-row:last-child {
+      grid-template-columns: repeat(4,1fr);
     }
 
-    .list-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
+    .position-item {
+      background:#f8fafc;
+      border-radius:10px;
+      padding:10px;
+      display:flex;
+      justify-content:space-between;
+      font-weight:700;
     }
 
-    .card {
-      background: #fff;
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-      border: 1px solid #edf0f5;
+    /* 테이블 */
+    .table-wrap {
+      background:#fff;
+      border-radius:16px;
+      overflow:auto;
     }
 
-    .card-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 14px;
+    table {
+      width:100%;
+      border-collapse:collapse;
     }
 
-    .name {
-      font-size: 20px;
-      font-weight: 800;
-      line-height: 1.2;
-      margin: 0;
+    th {
+      background:#111827;
+      color:#fff;
+      padding:12px;
+      text-align:left;
     }
 
-    .employee-no {
-      margin-top: 6px;
-      color: #666;
-      font-size: 13px;
+    td {
+      padding:12px;
+      border-bottom:1px solid #eee;
     }
 
-    .position-chip {
-      background: #111827;
-      color: #fff;
-      padding: 7px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
+    tr:hover {
+      background:#f9fafb;
     }
 
-    .meta {
-      display: grid;
-      gap: 10px;
-    }
-
-    .meta-row {
-      display: grid;
-      grid-template-columns: 70px 1fr;
-      gap: 10px;
-      align-items: start;
-      font-size: 14px;
-    }
-
-    .meta-label {
-      color: #6b7280;
-      font-weight: 700;
-    }
-
-    .meta-value {
-      color: #111827;
-      word-break: break-word;
-    }
-
-    .empty,
-    .loading,
-    .error-box {
-      background: #fff;
-      border-radius: 18px;
-      padding: 28px 20px;
-      text-align: center;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-    }
-
-    .empty p,
-    .loading p,
-    .error-box p {
-      margin: 0;
-      color: #666;
-      line-height: 1.6;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    @media (max-width: 1024px) {
-      .filter-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .list-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    @media (max-width: 640px) {
-      .wrap {
-        padding: 18px 12px 32px;
-      }
-
-      .filter-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .list-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .title-area h1 {
-        font-size: 24px;
-      }
-
-      .meta-row {
-        grid-template-columns: 62px 1fr;
-      }
-    }
+    .hidden { display:none; }
   </style>
 </head>
+
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="title-area">
-        <h1>사내 조직도</h1>
-        <p id="welcomeText">사용자 정보를 확인 중...</p>
-      </div>
+<div class="wrap">
 
-      <div class="top-actions">
-        <button type="button" class="btn-admin" id="adminBtn">관리자 페이지 이동</button>
-        <button type="button" class="btn-secondary" id="refreshBtn">새로고침</button>
-        <button type="button" class="btn-primary" id="logoutBtn">로그아웃</button>
-      </div>
+  <div class="topbar">
+    <div class="title-area">
+      <h1>사내 조직도</h1>
+      <p id="welcomeText"></p>
     </div>
 
-    <div class="panel">
-      <div class="filter-grid">
-        <div class="field">
-          <label for="searchInput">이름 / 사번 검색</label>
-          <input type="text" id="searchInput" placeholder="이름 또는 사번 입력" />
-        </div>
-
-        <div class="field">
-          <label for="storeFilter">매장</label>
-          <select id="storeFilter">
-            <option value="">전체</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="managerFilter">담당</label>
-          <select id="managerFilter">
-            <option value="">전체</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="teamLeaderFilter">팀장</label>
-          <select id="teamLeaderFilter">
-            <option value="">전체</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="positionFilter">직급</label>
-          <select id="positionFilter">
-            <option value="">전체</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="filter-actions">
-        <button type="button" class="btn-primary" id="searchBtn">검색</button>
-        <button type="button" class="btn-secondary" id="resetBtn">초기화</button>
-      </div>
+    <div>
+      <button class="btn-admin" id="adminBtn">관리자</button>
+      <button class="btn-secondary" id="refreshBtn">새로고침</button>
+      <button class="btn-primary" id="logoutBtn">로그아웃</button>
     </div>
-
-    <div class="panel summary">
-      <div class="summary-left">
-        <span class="badge" id="countBadge">총 0명</span>
-        <span class="muted" id="roleText">권한 확인 중...</span>
-      </div>
-      <div class="muted" id="statusText">조직도 데이터를 불러오는 중...</div>
-    </div>
-
-    <div id="loadingBox" class="loading">
-      <p>데이터를 불러오는 중이야.</p>
-    </div>
-
-    <div id="errorBox" class="error-box hidden">
-      <p id="errorMessage">오류가 발생했어.</p>
-    </div>
-
-    <div id="emptyBox" class="empty hidden">
-      <p>조건에 맞는 직원 정보가 없다.</p>
-    </div>
-
-    <div id="listGrid" class="list-grid hidden"></div>
   </div>
 
-  <script>
-    const SUPABASE_URL = 'https://ytnxmnbctujuopbqpurl.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_4oBm89ecivuVF6StOBz7yg_qNBItC4z';
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    const COLUMN_MAP = {
-      directory: {
-        employeeNo: "employee_no",
-        employeeName: "name",
-        storeName: "store_name",
-        managerName: "manager_name",
-        teamLeaderName: "team_leader_name",
-        positionName: "position_name"
-      },
-      account: {
-        employeeNo: "employee_no",
-        authUserId: "auth_user_id",
-        signupApproved: "signup_approved",
-        accountStatus: "account_status"
-      },
-      employee: {
-        employeeNo: "employee_no",
-        systemRoleId: "system_role_id"
-      },
-      role: {
-        id: "id",
-        roleName: "role_name"
-      }
-    };
-
-    const welcomeText = document.getElementById("welcomeText");
-    const adminBtn = document.getElementById("adminBtn");
-    const refreshBtn = document.getElementById("refreshBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-
-    const searchInput = document.getElementById("searchInput");
-    const storeFilter = document.getElementById("storeFilter");
-    const managerFilter = document.getElementById("managerFilter");
-    const teamLeaderFilter = document.getElementById("teamLeaderFilter");
-    const positionFilter = document.getElementById("positionFilter");
-    const searchBtn = document.getElementById("searchBtn");
-    const resetBtn = document.getElementById("resetBtn");
-
-    const countBadge = document.getElementById("countBadge");
-    const roleText = document.getElementById("roleText");
-    const statusText = document.getElementById("statusText");
-
-    const loadingBox = document.getElementById("loadingBox");
-    const errorBox = document.getElementById("errorBox");
-    const errorMessage = document.getElementById("errorMessage");
-    const emptyBox = document.getElementById("emptyBox");
-    const listGrid = document.getElementById("listGrid");
-
-    let allRows = [];
-    let filteredRows = [];
-    let currentUser = null;
-
-    function setLoading(isLoading) {
-      loadingBox.classList.toggle("hidden", !isLoading);
-      if (isLoading) {
-        errorBox.classList.add("hidden");
-        emptyBox.classList.add("hidden");
-        listGrid.classList.add("hidden");
-      }
-    }
-
-    function showError(message) {
-      loadingBox.classList.add("hidden");
-      listGrid.classList.add("hidden");
-      emptyBox.classList.add("hidden");
-      errorBox.classList.remove("hidden");
-      errorMessage.textContent = message;
-      statusText.textContent = "오류 발생";
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    function uniqueSortedValues(rows, key) {
-      const values = rows
-        .map(row => row[key])
-        .filter(v => v !== null && v !== undefined && String(v).trim() !== "")
-        .map(v => String(v).trim());
-
-      return [...new Set(values)].sort((a, b) => a.localeCompare(b, "ko"));
-    }
-
-    function fillSelect(selectEl, values) {
-      const current = selectEl.value;
-      selectEl.innerHTML = `<option value="">전체</option>`;
-      values.forEach(value => {
-        const option = document.createElement("option");
-        option.value = value;
-        option.textContent = value;
-        selectEl.appendChild(option);
-      });
-      selectEl.value = values.includes(current) ? current : "";
-    }
-
-    function normalizeAccountStatus(status) {
-      return String(status || "").toLowerCase().trim();
-    }
-
-    function buildCard(row) {
-      const c = COLUMN_MAP.directory;
-
-      const employeeName = row[c.employeeName] ?? "-";
-      const employeeNo = row[c.employeeNo] ?? "-";
-      const storeName = row[c.storeName] ?? "-";
-      const managerName = row[c.managerName] ?? "-";
-      const teamLeaderName = row[c.teamLeaderName] ?? "-";
-      const positionName = row[c.positionName] ?? "-";
-
-      return `
-        <div class="card">
-          <div class="card-top">
-            <div>
-              <h3 class="name">${escapeHtml(employeeName)}</h3>
-              <div class="employee-no">사번 ${escapeHtml(employeeNo)}</div>
-            </div>
-            <div class="position-chip">${escapeHtml(positionName)}</div>
-          </div>
-
-          <div class="meta">
-            <div class="meta-row">
-              <div class="meta-label">매장</div>
-              <div class="meta-value">${escapeHtml(storeName)}</div>
-            </div>
-            <div class="meta-row">
-              <div class="meta-label">담당</div>
-              <div class="meta-value">${escapeHtml(managerName)}</div>
-            </div>
-            <div class="meta-row">
-              <div class="meta-label">팀장</div>
-              <div class="meta-value">${escapeHtml(teamLeaderName)}</div>
-            </div>
-            <div class="meta-row">
-              <div class="meta-label">직급</div>
-              <div class="meta-value">${escapeHtml(positionName)}</div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderList(rows) {
-      loadingBox.classList.add("hidden");
-      errorBox.classList.add("hidden");
-
-      countBadge.textContent = `총 ${rows.length}명`;
-
-      if (!rows.length) {
-        listGrid.classList.add("hidden");
-        emptyBox.classList.remove("hidden");
-        statusText.textContent = "검색 결과 없음";
-        return;
-      }
-
-      emptyBox.classList.add("hidden");
-      listGrid.classList.remove("hidden");
-      listGrid.innerHTML = rows.map(buildCard).join("");
-      statusText.textContent = "조회 완료";
-    }
-
-    function applyFilters() {
-      const c = COLUMN_MAP.directory;
-
-      const keyword = searchInput.value.trim().toLowerCase();
-      const store = storeFilter.value;
-      const manager = managerFilter.value;
-      const teamLeader = teamLeaderFilter.value;
-      const position = positionFilter.value;
-
-      filteredRows = allRows.filter(row => {
-        const employeeName = String(row[c.employeeName] ?? "").toLowerCase();
-        const employeeNo = String(row[c.employeeNo] ?? "").toLowerCase();
-        const storeName = String(row[c.storeName] ?? "");
-        const managerName = String(row[c.managerName] ?? "");
-        const teamLeaderName = String(row[c.teamLeaderName] ?? "");
-        const positionName = String(row[c.positionName] ?? "");
-
-        const matchKeyword =
-          !keyword ||
-          employeeName.includes(keyword) ||
-          employeeNo.includes(keyword);
-
-        const matchStore = !store || storeName === store;
-        const matchManager = !manager || managerName === manager;
-        const matchTeamLeader = !teamLeader || teamLeaderName === teamLeader;
-        const matchPosition = !position || positionName === position;
-
-        return matchKeyword && matchStore && matchManager && matchTeamLeader && matchPosition;
-      });
-
-      renderList(filteredRows);
-    }
-
-    function resetFilters() {
-      searchInput.value = "";
-      storeFilter.value = "";
-      managerFilter.value = "";
-      teamLeaderFilter.value = "";
-      positionFilter.value = "";
-      filteredRows = [...allRows];
-      renderList(filteredRows);
-    }
-
-    function setupFilterOptions(rows) {
-      const c = COLUMN_MAP.directory;
-
-      fillSelect(storeFilter, uniqueSortedValues(rows, c.storeName));
-      fillSelect(managerFilter, uniqueSortedValues(rows, c.managerName));
-      fillSelect(teamLeaderFilter, uniqueSortedValues(rows, c.teamLeaderName));
-      fillSelect(positionFilter, uniqueSortedValues(rows, c.positionName));
-    }
-
-    async function ensureLoggedIn() {
-      const { data, error } = await supabaseClient.auth.getUser();
-
-      if (error || !data?.user) {
-        location.href = "index.html";
-        return null;
-      }
-
-      currentUser = data.user;
-      return data.user;
-    }
-
-    async function getMyAccount() {
-      const a = COLUMN_MAP.account;
-
-      const { data, error } = await supabaseClient
-        .from("au_employee_accounts")
-        .select(`
-          ${a.employeeNo},
-          ${a.authUserId},
-          ${a.signupApproved},
-          ${a.accountStatus}
-        `)
-        .eq(a.authUserId, currentUser.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("au_employee_accounts 조회 오류:", error);
-        throw new Error(`내 계정 정보를 불러오지 못했어. 상세 오류: ${error.message}`);
-      }
-
-      if (!data) {
-        throw new Error("로그인된 계정의 직원 연결 정보가 없어.");
-      }
-
-      return data;
-    }
-
-    function validateAccount(account) {
-      const approved = account.signup_approved;
-      const status = normalizeAccountStatus(account.account_status);
-
-      if (!approved) {
-        throw new Error("아직 승인되지 않은 계정이야.");
-      }
-
-      if (status === "disabled") {
-        throw new Error("비활성화된 계정이야.");
-      }
-
-      if (status === "locked") {
-        throw new Error("잠긴 계정이야.");
-      }
-    }
-
-    async function getMyEmployeeRole(employeeNo) {
-      const e = COLUMN_MAP.employee;
-      const r = COLUMN_MAP.role;
-
-      const { data: employeeData, error: employeeError } = await supabaseClient
-        .from("au_employees")
-        .select(`
-          ${e.employeeNo},
-          ${e.systemRoleId}
-        `)
-        .eq(e.employeeNo, employeeNo)
-        .maybeSingle();
-
-      if (employeeError) {
-        console.error("au_employees 조회 오류:", employeeError);
-        throw new Error(`직원 정보를 불러오지 못했어. 상세 오류: ${employeeError.message}`);
-      }
-
-      if (!employeeData || !employeeData[e.systemRoleId]) {
-        return "viewer";
-      }
-
-      const { data: roleData, error: roleError } = await supabaseClient
-        .from("au_system_roles")
-        .select(`
-          ${r.id},
-          ${r.roleName}
-        `)
-        .eq(r.id, employeeData[e.systemRoleId])
-        .maybeSingle();
-
-      if (roleError) {
-        console.error("au_system_roles 조회 오류:", roleError);
-        throw new Error(`권한 정보를 불러오지 못했어. 상세 오류: ${roleError.message}`);
-      }
-
-      return String(roleData?.[r.roleName] || "viewer").toLowerCase();
-    }
-
-    async function loadDirectory() {
-      setLoading(true);
-
-      const c = COLUMN_MAP.directory;
-
-      const { data, error } = await supabaseClient
-        .from("au_employee_directory_view")
-        .select(`
-          ${c.employeeNo},
-          ${c.employeeName},
-          ${c.storeName},
-          ${c.managerName},
-          ${c.teamLeaderName},
-          ${c.positionName}
-        `)
-        .order(c.employeeName, { ascending: true });
-
-      if (error) {
-        console.error("au_employee_directory_view 조회 오류:", error);
-        throw new Error(`조직도 데이터를 불러오지 못했어. 상세 오류: ${error.message}`);
-      }
-
-      allRows = Array.isArray(data) ? data : [];
-      setupFilterOptions(allRows);
-      filteredRows = [...allRows];
-      renderList(filteredRows);
-    }
-
-    searchBtn.addEventListener("click", applyFilters);
-    resetBtn.addEventListener("click", resetFilters);
-
-    refreshBtn.addEventListener("click", async () => {
-      try {
-        statusText.textContent = "새로고침 중...";
-        await loadDirectory();
-      } catch (err) {
-        showError(err.message || "새로고침 중 오류가 발생했어.");
-      }
-    });
-
-    adminBtn.addEventListener("click", () => {
-      location.href = "auth-requests.html";
-    });
-
-    logoutBtn.addEventListener("click", async () => {
-      await supabaseClient.auth.signOut();
-      location.href = "index.html";
-    });
-
-    searchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") applyFilters();
-    });
-
-    storeFilter.addEventListener("change", applyFilters);
-    managerFilter.addEventListener("change", applyFilters);
-    teamLeaderFilter.addEventListener("change", applyFilters);
-    positionFilter.addEventListener("change", applyFilters);
-
-    supabaseClient.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
-        location.href = "index.html";
-      }
-    });
-
-    async function init() {
-      try {
-        statusText.textContent = "로그인 상태 확인 중...";
-        await ensureLoggedIn();
-
-        statusText.textContent = "조직도 조회 중...";
-        await loadDirectory();
-
-        const myAccount = await getMyAccount();
-        validateAccount(myAccount);
-
-        const myRole = await getMyEmployeeRole(myAccount.employee_no);
-
-        welcomeText.textContent = `${myAccount.employee_no} 로그인됨`;
-        roleText.textContent = `권한: ${myRole}`;
-        adminBtn.style.display = myRole === "admin" ? "inline-flex" : "none";
-      } catch (err) {
-        console.error(err);
-        showError(err.message || "초기 로딩 중 오류가 발생했어.");
-      }
-    }
-
-    init();
-  </script>
+  <div class="panel filter-grid">
+    <input id="searchInput" placeholder="이름/사번"/>
+    <select id="storeFilter"><option value="">매장</option></select>
+    <select id="managerFilter"><option value="">담당</option></select>
+    <select id="teamLeaderFilter"><option value="">팀장</option></select>
+    <select id="positionFilter"><option value="">직급</option></select>
+  </div>
+
+  <div class="panel summary">
+    <span id="countBadge">0명</span>
+    <span id="roleText"></span>
+  </div>
+
+  <!-- 직급 요약 -->
+  <div class="panel">
+    <div class="position-row">
+      <div class="position-item"><span>담당</span><span>-</span></div>
+      <div class="position-item"><span>팀장</span><span>-</span></div>
+      <div class="position-item"><span>점장</span><span>-</span></div>
+      <div class="position-item"><span>SP2</span><span>-</span></div>
+      <div class="position-item"><span>SP1.5</span><span>-</span></div>
+      <div class="position-item"><span>SP1</span><span>-</span></div>
+    </div>
+    <div class="position-row">
+      <div class="position-item"><span>책임</span><span>-</span></div>
+      <div class="position-item"><span>선임</span><span>-</span></div>
+      <div class="position-item"><span>사원</span><span>-</span></div>
+      <div class="position-item"><span>CSM</span><span>-</span></div>
+    </div>
+  </div>
+
+  <!-- 테이블 -->
+  <div class="table-wrap hidden" id="tableWrap">
+    <table>
+      <thead>
+        <tr>
+          <th>사번</th>
+          <th>이름</th>
+          <th>매장</th>
+          <th>담당</th>
+          <th>팀장</th>
+          <th>직급</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const supabase = window.supabase.createClient(
+  'https://ytnxmnbctujuopbqpurl.supabase.co',
+  'sb_publishable_4oBm89ecivuVF6StOBz7yg_qNBItC4z'
+);
+
+const tableBody = document.getElementById("tableBody");
+const tableWrap = document.getElementById("tableWrap");
+const countBadge = document.getElementById("countBadge");
+
+async function loadData() {
+  const { data } = await supabase
+    .from("au_employee_directory_view")
+    .select("*");
+
+  render(data || []);
+}
+
+function render(rows) {
+
+  countBadge.textContent = `총 ${rows.length}명`;
+
+  // 테이블
+  tableBody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.employee_no}</td>
+      <td>${r.name}</td>
+      <td>${r.store_name || '-'}</td>
+      <td>${r.manager_name || '-'}</td>
+      <td>${r.team_leader_name || '-'}</td>
+      <td>${r.position_name || '-'}</td>
+    </tr>
+  `).join("");
+
+  tableWrap.classList.remove("hidden");
+
+  // 직급 집계
+  const counts = {};
+  rows.forEach(r => {
+    const p = r.position_name;
+    if (!p) return;
+    counts[p] = (counts[p] || 0) + 1;
+  });
+
+  document.querySelectorAll(".position-item").forEach(el => {
+    const label = el.children[0].innerText;
+    const value = counts[label] || 0;
+    el.children[1].innerText = value ? value : "-";
+  });
+}
+
+loadData();
+</script>
 </body>
 </html>
